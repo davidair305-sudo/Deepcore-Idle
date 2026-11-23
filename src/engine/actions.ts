@@ -108,20 +108,34 @@ export interface StepInput {
   kind: ActionKind;
   target: string;
   colony?: ColonyId;
-  amount?: number | null;
+  /** Time limit in ms; omit to run until stopped (or out of inputs). */
+  durationMs?: number | null;
   pick?: PickOrder;
 }
 
 function makeStep(s: GameState, input: StepInput): QueueStep {
-  if (input.amount != null && (!Number.isInteger(input.amount) || input.amount < 1)) throw new Error(`Bad amount: ${input.amount}`);
+  const d = input.durationMs ?? null;
+  if (d != null && !(Number.isFinite(d) && d > 0)) throw new Error(`Bad duration: ${d}`);
   return {
     kind: input.kind,
     target: input.target,
     colony: input.colony ?? s.colony,
-    amount: input.amount ?? null,
+    durationMs: d,
     pick: input.pick ?? 'lowest',
+    elapsedMs: 0,
     done: 0,
   };
+}
+
+/**
+ * Why this queue can't work, or null. A mining step with no time limit never
+ * ends, so it can only be the last step.
+ */
+export function queueProblem(queue: readonly Pick<QueueStep, 'kind' | 'durationMs'>[]): string | null {
+  for (let i = 0; i < queue.length - 1; i++) {
+    if (queue[i]!.kind === 'mine' && queue[i]!.durationMs == null) return 'A mining step needs a time limit when other steps come after it';
+  }
+  return null;
 }
 
 function resetCurrent(s: GameState): void {
@@ -135,12 +149,18 @@ export function startAction(s: GameState, input: StepInput): void {
   resetCurrent(s);
 }
 
-/** Add a step to the end of the queue. Returns false if every slot is taken. */
-export function enqueue(s: GameState, input: StepInput): boolean {
-  if (s.queue.length >= s.queueSlots) return false;
-  s.queue.push(makeStep(s, input));
+/**
+ * Add a step to the end of the queue. Returns null on success, or why it
+ * can't be added (every slot taken, or an untimed mining step in the way).
+ */
+export function enqueue(s: GameState, input: StepInput): string | null {
+  if (s.queue.length >= s.queueSlots) return 'Every queue slot is in use';
+  const step = makeStep(s, input);
+  const problem = queueProblem([...s.queue, step]);
+  if (problem) return problem;
+  s.queue.push(step);
   if (s.queue.length === 1) resetCurrent(s);
-  return true;
+  return null;
 }
 
 /** Remove a queued step by position. Removing the running step starts the next one fresh. */

@@ -6,6 +6,7 @@ import {
   keptOrePerAction,
   momentum,
   npcRefineAll,
+  queueProblem,
   startAction,
   stopAll,
 } from './actions';
@@ -48,13 +49,33 @@ describe('mining', () => {
     expect(countItem(s.inventory, 'copper')).toBeGreaterThan(400);
   });
 
-  it('stops exactly at the target amount', () => {
+  it('runs until stopped when no time limit is set', () => {
     const s = newGame();
-    startAction(s, { kind: 'mine', target: 'copper', amount: 10 });
+    startAction(s, { kind: 'mine', target: 'copper' });
+    advance(s, 10 * HOUR, quietRng);
+    expect(s.queue).toHaveLength(1);
+    expect(s.queue[0]!.elapsedMs).toBe(10 * HOUR);
+  });
+
+  it('moves on exactly when a time limit runs out', () => {
+    const s = newGame();
+    s.queueSlots = 2;
+    expect(enqueue(s, { kind: 'mine', target: 'copper', durationMs: 10 * MIN })).toBeNull();
+    expect(enqueue(s, { kind: 'mine', target: 'copper' })).toBeNull();
+    const r = advance(s, 10 * MIN + 1_000, quietRng);
+    expect(r.events).toContainEqual({ type: 'stepDone', target: 'copper', made: expect.any(Number) });
+    expect(r.actions).toBe(200); // 10 min of 3 s actions; the next step hasn't finished one yet
+    expect(s.queue).toHaveLength(1);
+    expect(s.queue[0]!.elapsedMs).toBe(1_000);
+  });
+
+  it('abandons the action in progress when the time limit lands mid-action', () => {
+    const s = newGame();
+    startAction(s, { kind: 'mine', target: 'copper', durationMs: 4_000 });
     const r = advance(s, HOUR, quietRng);
-    expect(countItem(s.inventory, 'copper')).toBe(10);
+    expect(r.actions).toBe(1);
     expect(s.queue).toEqual([]);
-    expect(r.events).toContainEqual({ type: 'stepDone', target: 'copper', made: 10 });
+    expect(s.xp.mining).toBe(5);
   });
 
   it('blocks ores above your level or outside the colony', () => {
@@ -138,11 +159,34 @@ describe('refining, crafting and the queue', () => {
 
   it('respects queue slots', () => {
     const s = newGame();
-    expect(enqueue(s, { kind: 'mine', target: 'copper' })).toBe(true);
-    expect(enqueue(s, { kind: 'refine', target: 'bronze' })).toBe(false);
+    expect(enqueue(s, { kind: 'mine', target: 'copper', durationMs: HOUR })).toBeNull();
+    expect(enqueue(s, { kind: 'refine', target: 'bronze' })).toBe('Every queue slot is in use');
     s.queueSlots = 3;
-    expect(enqueue(s, { kind: 'refine', target: 'bronze' })).toBe(true);
+    expect(enqueue(s, { kind: 'refine', target: 'bronze' })).toBeNull();
     stopAll(s);
+    expect(s.queue).toEqual([]);
+  });
+
+  it('needs a time limit on a mining step with steps after it', () => {
+    const s = newGame();
+    s.queueSlots = 3;
+    enqueue(s, { kind: 'mine', target: 'copper' });
+    expect(enqueue(s, { kind: 'refine', target: 'bronze' })).toBe('A mining step needs a time limit when other steps come after it');
+    expect(s.queue).toHaveLength(1);
+    expect(queueProblem([{ kind: 'refine', durationMs: null }, { kind: 'mine', durationMs: null }])).toBeNull();
+  });
+
+  it('runs a full plan: mine for a while, refine, then craft', () => {
+    const s = newGame();
+    s.queueSlots = 3;
+    s.xp.mining = xpForLevel(5); // tin needs Mining 5
+    startAction(s, { kind: 'mine', target: 'copper', durationMs: HOUR });
+    enqueue(s, { kind: 'mine', target: 'tin', durationMs: HOUR });
+    enqueue(s, { kind: 'refine', target: 'bronze' });
+    advance(s, 3 * HOUR, seededRng(11));
+    expect(countItem(s.inventory, 'bronze')).toBeGreaterThan(300);
+    // Refining stops when either ore runs out.
+    expect(Math.min(countItem(s.inventory, 'copper'), countItem(s.inventory, 'tin'))).toBe(0);
     expect(s.queue).toEqual([]);
   });
 
@@ -151,12 +195,12 @@ describe('refining, crafting and the queue', () => {
     s.queueSlots = 2;
     addItem(s.inventory, 'copper', 20, 6);
     addItem(s.inventory, 'tin', 20, 6);
-    enqueue(s, { kind: 'refine', target: 'bronze', amount: 6 });
+    enqueue(s, { kind: 'refine', target: 'bronze' });
     enqueue(s, { kind: 'craft', target: 'bronzeFittings' });
     const r = advance(s, HOUR, seededRng(5));
     expect(countItem(s.inventory, 'bronzeFittings')).toBe(3);
     expect(s.xp.crafting).toBe(45);
-    expect(r.events.map((e) => e.type)).toEqual(expect.arrayContaining(['stepDone', 'stepStopped']));
+    expect(r.events.filter((e) => e.type === 'stepStopped')).toHaveLength(2);
     for (const q of Object.keys(s.inventory.bronzeFittings!).map(Number)) expect(q).toBeLessThanOrEqual(25);
   });
 

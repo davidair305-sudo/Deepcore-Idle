@@ -11,11 +11,17 @@ export interface QueueStep {
   readonly target: string;
   /** Where the step runs (colonies switch freely, decision D2). */
   readonly colony: ColonyId;
-  /** Stop after this many outputs; null runs until inputs run out or the player stops it. */
-  readonly amount: number | null;
+  /**
+   * Run for this long, then move to the next step (decision D13). null runs
+   * until the player stops it or, for refining and crafting, inputs run out.
+   * A mining step that has steps after it must have one, or they'd never start.
+   */
+  readonly durationMs: number | null;
+  /** Time spent on this step so far, ms. */
+  elapsedMs: number;
   /** Which input units to use first when refining or crafting. */
   readonly pick: PickOrder;
-  /** Outputs made so far in this step. */
+  /** Outputs made so far in this step (for the return screen). */
   done: number;
 }
 

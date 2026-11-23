@@ -58,6 +58,14 @@ export function advance(s: GameState, ms: number, rng: Rng): AdvanceResult {
       break;
     }
     const need = actionTimeMs(s, step) - s.progressMs;
+    const timeLeft = step.durationMs == null ? Infinity : step.durationMs - step.elapsedMs;
+    if (timeLeft < need && timeLeft <= left) {
+      // The time limit runs out mid-action: that action is abandoned.
+      passTime(s, timeLeft, step);
+      left -= timeLeft;
+      finishStep(s, step, result);
+      continue;
+    }
     if (left < need) {
       passTime(s, left, step);
       s.progressMs += left;
@@ -68,19 +76,24 @@ export function advance(s: GameState, ms: number, rng: Rng): AdvanceResult {
     s.progressMs = 0;
     result.actions++;
     completeAction(s, step, rng, result);
-    if (step.amount != null && step.done >= step.amount) {
-      result.events.push({ type: 'stepDone', target: step.target, made: step.done });
-      advanceQueue(s);
-    }
+    if (step.durationMs != null && step.elapsedMs >= step.durationMs) finishStep(s, step, result);
   }
   return result;
+}
+
+function finishStep(s: GameState, step: QueueStep, result: AdvanceResult): void {
+  result.events.push({ type: 'stepDone', target: step.target, made: step.done });
+  advanceQueue(s);
 }
 
 /** Time passing: buffs run down, momentum builds, mines deplete or recover. */
 function passTime(s: GameState, ms: number, step: QueueStep | null): void {
   s.buffs.richVein = Math.max(0, s.buffs.richVein - ms);
   s.buffs.slowed = Math.max(0, s.buffs.slowed - ms);
-  if (step) s.momentumMs += ms;
+  if (step) {
+    s.momentumMs += ms;
+    step.elapsedMs += ms;
+  }
   const active = step?.kind === 'mine' ? mineKey(step.colony, step.target) : null;
   for (const key of Object.keys(s.depletion)) {
     if (key === active) continue;
@@ -114,11 +127,8 @@ function mine(s: GameState, step: QueueStep, ore: Ore, rng: Rng, result: Advance
   const whole = Math.floor(carry);
   s.oreCarry[ore.id] = carry - whole;
   if (whole > 0) {
-    // Don't overshoot the step's target amount.
-    const give = step.amount != null ? Math.min(whole, step.amount - step.done) : whole;
-    addItem(s.inventory, ore.id, rollOreQuality(ore, ml, rng), give);
-    step.done += give;
-    if (give < whole) s.oreCarry[ore.id]! += whole - give;
+    addItem(s.inventory, ore.id, rollOreQuality(ore, ml, rng), whole);
+    step.done += whole;
   }
   // XP is per action and ignores the fee (GDD).
   gainXp(s, 'mining', ore.xp, result);

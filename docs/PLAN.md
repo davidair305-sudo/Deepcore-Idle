@@ -137,7 +137,7 @@ The ship's computer runs your shift schedule, so queue slots are ship upgrades. 
 | 2 | **Shift Scheduler**: the first hangar install, built from early parts (bronze fittings + steel plating) | ~Day 2, around oil chain step 3 |
 | 3 | **Nav Computer** upgrade (the GDD module: shows which colony pays best per item) | ~Week 1 |
 
-- Each queue step needs a target amount, runs only if its inputs exist, and obeys the 24 h + 48 h offline cap.
+- Actions are start/stop. A queued step can have a **time limit** (e.g. "mine copper for 6 h"); a mining step needs one when steps come after it, since mining never runs out. Refining and crafting can also end when inputs run out. The queue obeys the 24 h + 48 h offline cap (decision D13).
 - So the hangar must open early (proposed: after oil chain step 2, not at rank 5); the launch modules are where the rank gates sit.
 - Export contracts (GDD: the nav computer's AI pilot flies contracts as a parallel action) stay parked for Phase 2.
 
@@ -188,6 +188,7 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
 | D9 | Items have quality 1–100 from materials + skill; 100 = perfect craft | **Decided** (formulas in section 3 are proposed) |
 | D10 | Ship interior and a buyable travel robot are parked for later phases | **Decided** |
 | D12 | Action queue slots are earned through ship computer modules (section 3a), not given at the start | **Decided** (module names and costs proposed) |
+| D13 | Actions are start/stop; queued steps use optional time limits, not amounts. A mining step needs a time limit when other steps follow it | **Decided** |
 | P2 | Quality formulas, tiers and arrival chance = ship quality % (section 3) | Proposed |
 | D11 | The awarded ship has quality ~50 (about 50% arrival odds); a well-crafted ship beats it | **Decided** |
 | P4 | Stall uses the single action slot | Proposed |
