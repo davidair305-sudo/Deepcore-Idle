@@ -160,7 +160,10 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
 
 - [x] **S1 — Scaffold + data.** Vite/TS/Vitest, lint, CI, Pages deploy, `CLAUDE.md`, data tables, XP curve, ranks and fees, item-with-quality model and inventory stacks, with tests.
   - Done 2026-11-23. Lint is TypeScript strict mode for now (no ESLint). The GitHub Pages deploy needs Pages enabled (Settings → Pages → Source: GitHub Actions) and runs from `main`. The page is a placeholder that shows the data tables.
-- [ ] **S2 — Core engine.** Action loop + **action queue**, mining (yield, fee, kit, momentum, depletion, gems, ore quality), refining and crafting with quality rolls, NPC refiner, random events, offline progress with the cap.
+- [x] **S2 — Core engine.** Action loop + **action queue**, mining (yield, fee, kit, momentum, depletion, gems, ore quality), refining and crafting with quality rolls, NPC refiner, random events, offline progress with the cap.
+  - Done 2026-11-23. Engine files: `state.ts`, `actions.ts` (rates, requirements, queue, NPC refiner), `tick.ts` (time loop), `qualityRules.ts`, `randomEvents.ts`, `offline.ts`, `rng.ts`. 48 tests.
+  - Quality note: mastery is 40 levels above an item's requirement (50 for crafting), but never past level 99, so palladium and other top-tier items can still reach full quality. First check: day-one bronze fittings come out at quality ~4–11, which fits the "junk ship ≈ 5%" target.
+  - Deferred: hull frame "silver lining" events (need modules, S7); the return-screen summary of an advance (S5); the stall as a queue action (S3).
 - [ ] **S3 — Economy engine.** Stall pricing curve, broker, donate (with quality-scaled value), kit trader, oil chain, repeatable contracts. Twice-a-day balance sim in CI.
 - [ ] **S4 — UI port.** All screens rebuilt on the engine with the mood board styling; queue editor; quality shown on items; phone layout.
 - [ ] **S5 — Return screen + first run + saves.** Return screen sequence, first-run guidance, versioned save, export/import, dev panel behind a flag.
