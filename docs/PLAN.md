@@ -58,7 +58,7 @@ Hours of pure mining to reach a level, by XP multiplier:
 
 **In:**
 - Mining, Refining, Crafting, Trading; 3 colonies with free switching.
-- Reputation and fees; ranks gate the kit trader (rank 4) and the hangar.
+- Reputation and fees; ranks gate the kit trader (rank 4) and the launch modules.
 - Selling: stall, broker, donate. **No market buying** (D3).
 - Kit trader (kits can't be resold or donated, so this is safe).
 - Oil depot chain, repeatable contracts.
@@ -127,6 +127,20 @@ Every mined, refined or crafted item has a **quality from 1 to 100**. Same item,
 | A self-crafted ship at ~50% odds | ~2–3 weeks |
 | Perfect ship | long-term chase, Phase 2+ |
 
+### 3a. Action queue slots come from the ship (proposed specifics)
+
+The ship's computer runs your shift schedule, so queue slots are ship upgrades. You build them in the hangar like any module.
+
+| Slots | Unlocked by | When (target) |
+| --- | --- | --- |
+| 1 (no queue) | Start | Day 1, hands-on |
+| 2 | **Shift Scheduler**: the first hangar install, built from early parts (bronze fittings + steel plating) | ~Day 2, around oil chain step 3 |
+| 3 | **Nav Computer** upgrade (the GDD module: shows which colony pays best per item) | ~Week 1 |
+
+- Each queue step needs a target amount, runs only if its inputs exist, and obeys the 24 h + 48 h offline cap.
+- So the hangar must open early (proposed: after oil chain step 2, not at rank 5); the launch modules are where the rank gates sit.
+- Export contracts (GDD: the nav computer's AI pilot flies contracts as a parallel action) stay parked for Phase 2.
+
 ---
 
 ## 4. Tech plan (decided: TypeScript)
@@ -169,7 +183,7 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
 | D8 | Junk ships can launch; arrival odds come from ship quality (5% minimum) | **Decided** |
 | D9 | Items have quality 1–100 from materials + skill; 100 = perfect craft | **Decided** (formulas in section 3 are proposed) |
 | D10 | Ship interior and a buyable travel robot are parked for later phases | **Decided** |
-| P1 | Action queue (A9) | Proposed — awaiting answer |
+| D12 | Action queue slots are earned through ship computer modules (section 3a), not given at the start | **Decided** (module names and costs proposed) |
 | P2 | Quality formulas, tiers and arrival chance = ship quality % (section 3) | Proposed |
 | D11 | The awarded ship has quality ~50 (about 50% arrival odds); a well-crafted ship beats it | **Decided** |
 | P4 | Stall uses the single action slot | Proposed |
