@@ -191,4 +191,4 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
 | D13 | Actions are start/stop; queued steps use optional time limits, not amounts. A mining step needs a time limit when other steps follow it | **Decided** |
 | P2 | Quality formulas, tiers and arrival chance = ship quality % (section 3) | Proposed |
 | D11 | The awarded ship has quality ~50 (about 50% arrival odds); a well-crafted ship beats it | **Decided** |
-| P4 | Stall uses the single action slot | Proposed |
+| D14 | Stall: list several wares, sold one unit at a time **in list order**. Each ware's price slider starts at market price (100%), range 25–300%. Speed = e^((n − p)/n), max 3×, where n is the normal-speed price: 100% at Trading 1, rising 0.25% per level to ~124.5% at 99. Running the stall is an **action** (queueable) | **Decided** |

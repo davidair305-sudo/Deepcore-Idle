@@ -28,6 +28,8 @@ const SLOWED_MS = 5 * 60 * 1000;
 const INSPECTOR_REP = 150;
 const CAVE_IN_DEPLETION = 0.03;
 const CRITTER_ORE_LOST = 3;
+const HAGGLER_CREDITS = 25;
+const SHORT_CHANGED_CREDITS = 15;
 
 /** Duplicate one unit of the step's output at the best quality held. */
 function bonusOutput(s: GameState, step: QueueStep): void {
@@ -70,6 +72,10 @@ const EVENTS: Record<ActionKind, readonly EventDef[]> = {
   craft: [
     { id: 'steadyHands', text: 'Steady hands: one extra item', good: true, apply: bonusOutput },
     { id: 'toolSlip', text: 'Tool slip: one item scrapped', good: false, apply: (s, step) => loseOutput(s, step, 1) },
+  ],
+  sell: [
+    { id: 'haggler', text: 'Generous haggler: paid over asking, +credits', good: true, apply: (s) => (s.credits += HAGGLER_CREDITS) },
+    { id: 'shortChanged', text: 'Short-changed by a customer', good: false, apply: (s) => (s.credits = Math.max(0, s.credits - SHORT_CHANGED_CREDITS)) },
   ],
 };
 

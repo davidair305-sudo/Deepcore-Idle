@@ -3,6 +3,7 @@ import type { Bar, ColonyId, Craftable, Kit, Ore, SkillId } from '../data/types'
 import { KITS, getColony } from '../data/world';
 import { addItem, averageQualityOf, countItem, removeRecipe, type PickOrder } from './inventory';
 import { npcBarQuality } from './qualityRules';
+import { currentWare, saleTimeMs } from './stall';
 import { colonyFee } from './reputation';
 import { mineKey, type ActionKind, type GameState, type QueueStep } from './state';
 import { levelForXp } from './xp';
@@ -36,8 +37,8 @@ export const getOre = (id: string): Ore | undefined => ORE_BY_ID.get(id);
 export const getBar = (id: string): Bar | undefined => BAR_BY_ID.get(id);
 export const getCraftable = (id: string): Craftable | undefined => CRAFT_BY_ID.get(id);
 
-export const skillOf = (kind: ActionKind): SkillId =>
-  kind === 'mine' ? 'mining' : kind === 'refine' ? 'refining' : 'crafting';
+const SKILL_OF: Record<ActionKind, SkillId> = { mine: 'mining', refine: 'refining', craft: 'crafting', sell: 'trading' };
+export const skillOf = (kind: ActionKind): SkillId => SKILL_OF[kind];
 
 export const level = (s: GameState, skill: SkillId): number => levelForXp(s.xp[skill]);
 
@@ -62,6 +63,8 @@ export function actionTimeMs(s: GameState, step: QueueStep): number {
       return REFINE_TIME_MS / (1 + 0.02 * (level(s, 'refining') - 1));
     case 'craft':
       return CRAFT_TIME_MS / (1 + 0.02 * (level(s, 'crafting') - 1));
+    case 'sell':
+      return saleTimeMs(s);
   }
 }
 
@@ -94,6 +97,7 @@ export function blockReason(s: GameState, step: QueueStep): string | null {
     if (!hasInputs(s, bar.recipe)) return `Out of materials for ${bar.name}`;
     return null;
   }
+  if (step.kind === 'sell') return currentWare(s) ? null : 'Your stall is sold out';
   const item = getCraftable(step.target);
   if (!item) return `${step.target} isn't craftable`;
   if (level(s, 'crafting') < item.craftingLevel) return `Needs Crafting ${item.craftingLevel}`;
@@ -104,8 +108,12 @@ export function blockReason(s: GameState, step: QueueStep): string | null {
 const hasInputs = (s: GameState, recipe: Readonly<Record<string, number>>): boolean =>
   Object.entries(recipe).every(([id, n]) => countItem(s.inventory, id) >= n);
 
+/** Target id used by every sell step. */
+export const STALL_TARGET = 'stall';
+
 export interface StepInput {
   kind: ActionKind;
+  /** Ignored for sell steps. */
   target: string;
   colony?: ColonyId;
   /** Time limit in ms; omit to run until stopped (or out of inputs). */
@@ -118,7 +126,7 @@ function makeStep(s: GameState, input: StepInput): QueueStep {
   if (d != null && !(Number.isFinite(d) && d > 0)) throw new Error(`Bad duration: ${d}`);
   return {
     kind: input.kind,
-    target: input.target,
+    target: input.kind === 'sell' ? STALL_TARGET : input.target,
     colony: input.colony ?? s.colony,
     durationMs: d,
     pick: input.pick ?? 'lowest',
@@ -197,4 +205,5 @@ export function npcRefineAll(s: GameState, barId: string, pick: PickOrder = 'low
 }
 
 /** Display name for any step target. */
-export const targetName = (step: Pick<QueueStep, 'target'>): string => getItem(step.target).name;
+export const targetName = (step: Pick<QueueStep, 'target'>): string =>
+  step.target === STALL_TARGET ? 'Market stall' : getItem(step.target).name;

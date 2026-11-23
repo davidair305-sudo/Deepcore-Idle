@@ -1,13 +1,15 @@
 import type { ColonyId, SkillId } from '../data/types';
 import { HOME_COLONY } from '../data/world';
 import type { Inventory, PickOrder } from './inventory';
+import type { Ware } from './stall';
 
-export type ActionKind = 'mine' | 'refine' | 'craft';
+/** `sell` runs the market stall (decision D14). */
+export type ActionKind = 'mine' | 'refine' | 'craft' | 'sell';
 
 /** One step of the action queue. The first step in the queue is the one running. */
 export interface QueueStep {
   readonly kind: ActionKind;
-  /** Ore, bar or craftable id. */
+  /** Ore, bar or craftable id; `stall` for a sell step. */
   readonly target: string;
   /** Where the step runs (colonies switch freely, decision D2). */
   readonly colony: ColonyId;
@@ -48,6 +50,36 @@ export interface GameState {
   oreCarry: Record<string, number>;
   /** Remaining time on timed effects from random events, ms. */
   buffs: { richVein: number; slowed: number };
+  /** Wares on the market stall, in selling order. */
+  stall: Ware[];
+  /** Oil depot story contract (GDD "Contracts"). */
+  oil: OilProgress;
+  /** Each colony's task board for the current 8 h window (generated when first viewed). */
+  boards: Partial<Record<ColonyId, ContractBoard>>;
+}
+
+export interface Contract {
+  readonly item: string;
+  readonly amount: number;
+  readonly credits: number;
+  readonly rep: number;
+  done: boolean;
+}
+
+export interface ContractBoard {
+  /** floor(time / 8 h) when the board was posted. */
+  readonly window: number;
+  readonly offers: Contract[];
+}
+
+export interface OilProgress {
+  /** Index of the current step in OIL_CHAIN; equal to its length when finished. */
+  step: number;
+  /** Stall sales (credits) counted toward step 4, self-made goods only. */
+  sales: number;
+  token: boolean;
+  hangar: boolean;
+  oilDepot: boolean;
 }
 
 export function newGame(): GameState {
@@ -66,6 +98,9 @@ export function newGame(): GameState {
     depletion: {},
     oreCarry: {},
     buffs: { richVein: 0, slowed: 0 },
+    stall: [],
+    oil: { step: 0, sales: 0, token: false, hangar: false, oilDepot: false },
+    boards: {},
   };
 }
 

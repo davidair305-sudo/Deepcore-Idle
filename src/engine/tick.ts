@@ -18,6 +18,8 @@ import { addItem, averageQualityOf, removeRecipe } from './inventory';
 import { rollBarQuality, rollCraftQuality, rollOreQuality } from './qualityRules';
 import { rollRandomEvent, type RandomEvent } from './randomEvents';
 import type { Rng } from './rng';
+import { sellOne, tradingXpForSale } from './stall';
+import { recordSale } from './contracts';
 import { mineKey, type GameState, type QueueStep } from './state';
 
 // The time loop. advance() moves the game forward by any amount of time,
@@ -114,7 +116,8 @@ function gainXp(s: GameState, skill: SkillId, xp: number, result: AdvanceResult)
 function completeAction(s: GameState, step: QueueStep, rng: Rng, result: AdvanceResult): void {
   if (step.kind === 'mine') mine(s, step, getOre(step.target)!, rng, result);
   else if (step.kind === 'refine') refine(s, step, rng, result);
-  else craft(s, step, rng, result);
+  else if (step.kind === 'craft') craft(s, step, rng, result);
+  else sell(s, step, result);
 
   const ev = rollRandomEvent(s, step, rng);
   if (ev) result.events.push({ type: 'random', event: ev });
@@ -146,6 +149,13 @@ function refine(s: GameState, step: QueueStep, rng: Rng, result: AdvanceResult):
   addItem(s.inventory, bar.id, q, 1);
   step.done++;
   gainXp(s, 'refining', bar.xp, result);
+}
+
+function sell(s: GameState, step: QueueStep, result: AdvanceResult): void {
+  const sale = sellOne(s, step.colony)!;
+  step.done++;
+  recordSale(s, sale.credits);
+  gainXp(s, 'trading', tradingXpForSale(sale.credits), result);
 }
 
 function craft(s: GameState, step: QueueStep, rng: Rng, result: AdvanceResult): void {
