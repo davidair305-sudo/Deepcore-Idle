@@ -13,6 +13,7 @@ At the end of a session: tick its checkbox in `docs/PLAN.md`, note anything defe
 - `npm test` — Vitest unit tests (must pass before committing)
 - `npm run typecheck` — TypeScript strict check
 - `npm run build` — typecheck + production build to `dist/`
+- `npm run sim -- 21` — pacing report for a twice-a-day player over 21 days
 
 CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push, and deploys `dist/` to GitHub Pages from `main`.
 
@@ -20,7 +21,7 @@ CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push, a
 - `src/data/` — data tables copied from the GDD (ores, bars, recipes, kits, colonies, oil chain). Change numbers here and in the GDD together.
 - `src/engine/` — game rules. Keep it pure and deterministic: no DOM, no `Date.now()` or `Math.random()` inside; take a clock and RNG as arguments so tests and the balance sim can drive it. Every rule gets a unit test next to it (`*.test.ts`).
 - `src/ui/` — screens (from S4). UI reads engine state; it never computes rules itself.
-- `tools/pacing_sim.py` — the planning-session pacing sim; replaced by a TypeScript sim on the real engine in S3.
+- `src/sim/` — twice-a-day balance bot on the real engine. `npm run sim -- <days>` prints a pacing report; `pacing.test.ts` holds guard rails. Re-run it after any balance change.
 
 ## Rules of thumb
 - Items always carry a quality 1–100; inventory stacks by item + quality (`src/engine/inventory.ts`).

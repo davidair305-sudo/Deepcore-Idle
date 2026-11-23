@@ -148,7 +148,7 @@ The ship's computer runs your shift schedule, so queue slots are ship upgrades. 
 - **Vite + TypeScript**, no framework. Deploy as a static site to **GitHub Pages** via GitHub Actions.
 - `src/engine/`: pure, deterministic rules (injectable RNG and clock), unit-tested with Vitest. Items are modeled with quality from day one.
 - `src/ui/`: the screens. `src/data/*.ts`: data tables from the GDD.
-- Balance sim in TypeScript on the real engine, run in CI (replaces `tools/pacing_sim.py`). It simulates a twice-a-day player, not 24/7 play.
+- Balance sim in TypeScript on the real engine (`src/sim/`, `npm run sim`), run in CI. It simulates a twice-a-day player, not 24/7 play.
 - Save: `{ version, state }` JSON, migrations, export/import, backup slot.
 - Dev panel only in dev builds or with `?dev=1`.
 
@@ -164,7 +164,13 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
   - Done 2026-11-23. Engine files: `state.ts`, `actions.ts` (rates, requirements, queue, NPC refiner), `tick.ts` (time loop), `qualityRules.ts`, `randomEvents.ts`, `offline.ts`, `rng.ts`. 48 tests.
   - Quality note: mastery is 40 levels above an item's requirement (50 for crafting), but never past level 99, so palladium and other top-tier items can still reach full quality. First check: day-one bronze fittings come out at quality ~4–11, which fits the "junk ship ≈ 5%" target.
   - Deferred: hull frame "silver lining" events (need modules, S7); the return-screen summary of an advance (S5); the stall as a queue action (S3).
-- [ ] **S3 — Economy engine.** Stall pricing curve, broker, donate (with quality-scaled value), kit trader, oil chain, repeatable contracts. Twice-a-day balance sim in CI.
+- [x] **S3 — Economy engine.** Stall pricing curve, broker, donate (with quality-scaled value), kit trader, oil chain, repeatable contracts. Twice-a-day balance sim in CI.
+  - Done 2026-11-23. Files: `value.ts`, `stall.ts`, `market.ts`, `contracts.ts`; sim in `src/sim/` (`npm run sim`), with guard-rail tests in CI. 76 tests.
+  - First sim results (twice-a-day bot): oil chain done ~day 4.5; home rank 5 ~day 10.5; rank 10 ~day 18.5 (target 10–14 for the prestige reward, but the bot isn't optimal).
+  - **Findings for S6:**
+    1. **Credits pile up:** ~1.2M by day 21, and kits only cost ~245k in total. Module install fees and repairs must absorb roughly 1M+ by launch.
+    2. **Crafting stalls at ~28** for a value-chasing player: between Crafting 15 and 30, crafted parts add less value per hour than donating bars. The ship requirements must be what pulls players into Crafting (S6/S7 bot goals).
+    3. **Trading XP is too generous:** one sales push (oil step 4) took Trading from 1 to 29, because XP = 5 + 50% of credits per sale. Tune it.
 - [ ] **S4 — UI port.** All screens rebuilt on the engine with the mood board styling; queue editor; quality shown on items; phone layout.
 - [ ] **S5 — Return screen + first run + saves.** Return screen sequence, first-run guidance, versioned save, export/import, dev panel behind a flag.
 - [ ] **S6 — Starship + quality design pass.** Use the sim to set quality ceilings and roll chances, module material-tier recipes, parts per module, install fees, the hangar rank gate, fuel numbers, the awarded ship's quality and the XP tuning to hit section 3's targets. Write the results into the GDD.
