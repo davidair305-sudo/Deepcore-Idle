@@ -171,5 +171,5 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
 | D10 | Ship interior and a buyable travel robot are parked for later phases | **Decided** |
 | P1 | Action queue (A9) | Proposed — awaiting answer |
 | P2 | Quality formulas, tiers and arrival chance = ship quality % (section 3) | Proposed |
-| P3 | The awarded ship's quality (proposed ~50: decent odds, but crafting can beat it) | Proposed — awaiting answer |
+| D11 | The awarded ship has quality ~50 (about 50% arrival odds); a well-crafted ship beats it | **Decided** |
 | P4 | Stall uses the single action slot | Proposed |
