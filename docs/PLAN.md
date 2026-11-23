@@ -158,7 +158,8 @@ The ship's computer runs your shift schedule, so queue slots are ship upgrades. 
 
 Each session ends with tests passing, a commit and push, and these checkboxes updated.
 
-- [ ] **S1 — Scaffold + data.** Vite/TS/Vitest, lint, CI, Pages deploy, `CLAUDE.md`, data tables, XP curve, ranks and fees, item-with-quality model and inventory stacks, with tests.
+- [x] **S1 — Scaffold + data.** Vite/TS/Vitest, lint, CI, Pages deploy, `CLAUDE.md`, data tables, XP curve, ranks and fees, item-with-quality model and inventory stacks, with tests.
+  - Done 2026-11-23. Lint is TypeScript strict mode for now (no ESLint). The GitHub Pages deploy needs Pages enabled (Settings → Pages → Source: GitHub Actions) and runs from `main`. The page is a placeholder that shows the data tables.
 - [ ] **S2 — Core engine.** Action loop + **action queue**, mining (yield, fee, kit, momentum, depletion, gems, ore quality), refining and crafting with quality rolls, NPC refiner, random events, offline progress with the cap.
 - [ ] **S3 — Economy engine.** Stall pricing curve, broker, donate (with quality-scaled value), kit trader, oil chain, repeatable contracts. Twice-a-day balance sim in CI.
 - [ ] **S4 — UI port.** All screens rebuilt on the engine with the mood board styling; queue editor; quality shown on items; phone layout.
