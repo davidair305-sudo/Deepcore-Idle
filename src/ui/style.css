@@ -338,3 +338,100 @@ td.n { text-align: right; font-family: var(--num); font-size: 18px; }
   /* Small map: only the selected site keeps its label; the panel below names it. */
   .site:not(.sel) span { display: none; }
 }
+
+/* ================= S5: return screen, coach card, settings ================= */
+.red-t { color: var(--red); }
+.gear { min-height: 44px; min-width: 44px; padding: 0 12px; font-size: 18px; letter-spacing: 0; }
+
+/* Return screen (mood board "While you were away"). */
+body.rs-open { overflow: hidden; }
+.rs { position: fixed; inset: 0; z-index: 20; overflow-y: auto; padding: 32px 16px;
+  background-color: var(--void);
+  background-image: linear-gradient(var(--hull) 1px, transparent 1px), linear-gradient(90deg, var(--hull) 1px, transparent 1px);
+  background-size: 24px 24px; }
+.rs-panel { max-width: 760px; margin: 0 auto; background: var(--hull); border-top: 3px solid var(--amber); clip-path: var(--cut); padding: 28px clamp(16px, 4vw, 36px) 24px; display: flex; flex-direction: column; gap: 14px; }
+.rs-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.rs-title { font: clamp(26px, 5vw, 40px)/1.05 var(--pixel); letter-spacing: 0.1em; text-transform: uppercase; margin: 8px 0 6px; color: var(--bone); }
+.rs-away { font-size: 22px; color: var(--plate); margin: 0; }
+.rs-away .dim { font-size: 16px; }
+.rs-skipwrap { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.logo-big { width: 56px; height: 56px; background: repeating-linear-gradient(135deg, var(--amber) 0 10px, var(--void) 10px 20px); }
+.rs-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.rs-stat { display: flex; gap: 12px; align-items: center; background: var(--steel); padding: 14px; }
+.rs-stat.keep { border-top: 2px solid var(--amber); }
+.rs-stat small, .rs-credits small { display: block; font-size: 13px; color: var(--plate); }
+.rs-stat b { font-size: 30px; line-height: 1; }
+.rs-stat .icbox { width: 44px; height: 44px; flex: none; }
+.rs-credits { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.rs-credits b { font-size: 48px; line-height: 1; }
+.rs-made { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; }
+.rs-made span { display: inline-flex; align-items: center; gap: 6px; }
+.rs-made .ic { width: 18px; height: 18px; }
+.rs-made .down { color: var(--plate); }
+.rs-skills { display: flex; flex-direction: column; gap: 10px; }
+.rs-skill { position: relative; background: var(--steel); padding: 14px 16px; overflow: hidden; }
+.rs-skill-h { display: flex; align-items: baseline; gap: 12px; }
+.rs-skill-h small { font-size: 12px; color: var(--plate); }
+.rs-skill-h b { font-size: 18px; color: var(--amber); }
+.rs-skill-h .num { margin-left: auto; font-size: 30px; color: var(--amber); }
+.rs-skill-f { display: flex; justify-content: space-between; color: var(--plate); }
+.rs-bar { height: 14px; background: var(--void); margin: 8px 0 4px; }
+.rs-bar i { display: block; height: 100%; width: var(--to); background: var(--amber); animation: rsFill 0.9s ease-out both; animation-delay: calc(var(--d, 0s) + 0.15s); }
+.rs-skill.lvl { background: var(--amber); color: var(--void); }
+.rs-skill.lvl .rs-skill-h b, .rs-skill.lvl .rs-skill-h .num, .rs-skill.lvl .rs-skill-f, .rs-skill.lvl small { color: rgba(7, 9, 13, 0.55); }
+.rs-skill.lvl .rs-bar { background: rgba(7, 9, 13, 0.18); }
+.rs-skill.lvl .rs-bar i { background: var(--molten); }
+.rs-burst { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(26px, 5vw, 38px); letter-spacing: 0.12em; color: var(--void); text-transform: uppercase;
+  animation: rsBurst 0.6s cubic-bezier(.2, 1.6, .4, 1) both; animation-delay: calc(var(--d, 0s) + 0.5s); }
+.rs-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.rs-card { padding: 12px 14px; font-size: 14px; }
+.rs-card.good { background: var(--steel); border-left: 3px solid var(--cyan); color: var(--bone); }
+.rs-card.bad { background: transparent; border: 1px solid var(--gunmetal); color: var(--plate); font-size: 13px; padding: 8px 12px; }
+.rs-card em { font-style: normal; opacity: 0.8; }
+.rs-best { background: var(--void); border: 2px solid var(--molten); padding: 20px; text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.rs-best small { font: 11px var(--pixel); letter-spacing: 0.2em; color: var(--molten); text-transform: uppercase; }
+.rs-best b { font-size: clamp(24px, 5vw, 34px); color: var(--molten); }
+.rs-best span { color: var(--plate); }
+.rs-goal b { display: block; font-size: 17px; margin-bottom: 6px; }
+.rs-goal .thin { margin-bottom: 6px; }
+.rs-goal .thin i { background: var(--amber); }
+.rs-actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+.rs-banked { margin: 0; font-size: 13px; text-align: center; }
+
+/* Reveal timing: each block fades up at its own --d; cards flip. Skip shows everything. */
+.rs-in { animation: rsIn 0.35s ease-out both; animation-delay: var(--d, 0s); }
+.rs-flip { animation: rsFlip 0.4s ease-out both; animation-delay: var(--d, 0s); transform-origin: left center; }
+.rs.skip *, .rs.skip *::before { animation: none !important; }
+.rs.skip .rs-burst { display: none; }
+@keyframes rsIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rsFlip { from { opacity: 0; transform: perspective(400px) rotateY(-70deg); } to { opacity: 1; transform: none; } }
+@keyframes rsFill { from { width: var(--from); } to { width: var(--to); } }
+@keyframes rsBurst { 0% { opacity: 0; transform: scale(0.4); } 60% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.3); } }
+@media (prefers-reduced-motion: reduce) {
+  .rs *, .rs *::before { animation: none !important; }
+  .rs-burst { display: none; }
+}
+
+/* Coach card (first-run guidance). */
+.coach { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 16px; background: var(--hull); border-left: 3px solid var(--amber); padding: 12px 16px; margin-bottom: 14px; }
+.coach > div:first-child { flex: 1 1 320px; }
+.coach b { display: block; font-size: 16px; }
+.coach p { margin: 2px 0 6px; font-size: 14px; }
+.coach .thin i { background: var(--amber); }
+.coach-btns { display: flex; gap: 8px; }
+
+/* Settings */
+.setting { margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.setting .panel-h { width: 100%; }
+.setting.danger { border-top-color: var(--red); }
+.code { width: 100%; background: var(--void); color: var(--bone); border: 1px solid var(--gunmetal); padding: 8px; font: 15px/1.3 var(--num); word-break: break-all; resize: vertical; }
+.toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; }
+.toggle input { width: 22px; height: 22px; accent-color: var(--amber); }
+
+@media (max-width: 760px) {
+  .rs { padding: 12px 8px; }
+  .rs-stats { grid-template-columns: 1fr 1fr; }
+  .rs-stat:first-child { grid-column: 1 / -1; }
+  .rs-actions { grid-template-columns: 1fr; }
+  .gear { order: 2; }
+}

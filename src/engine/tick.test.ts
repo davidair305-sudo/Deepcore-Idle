@@ -97,6 +97,17 @@ describe('mining', () => {
     expect(equippedKit(s).id).toBe('steelKit'); // gravsteel needs Mining 85
   });
 
+  it('reports ore mined before and after the fee', () => {
+    const s = newGame();
+    startAction(s, { kind: 'mine', target: 'copper' });
+    const r = advance(s, HOUR, quietRng);
+    const m = r.mined.copper!;
+    expect(m.kept).toBe(countItem(s.inventory, 'copper'));
+    // A 60% fee keeps about 40% of the gross.
+    expect(m.kept / m.gross).toBeGreaterThan(0.39);
+    expect(m.kept / m.gross).toBeLessThan(0.41);
+  });
+
   it('levels up and reports it', () => {
     const s = newGame();
     startAction(s, { kind: 'mine', target: 'copper' });

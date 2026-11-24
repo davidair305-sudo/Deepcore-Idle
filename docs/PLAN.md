@@ -180,7 +180,11 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
   - New rule: the stall has **6 display slots** (mood board), `MAX_WARES` in `stall.ts`.
   - Market and Task board are gone as separate screens: donating is now "Present ore" in City Center; the broker and kit trader live in the Trade ring.
   - Hangar part slots (hull, nose, cockpit, wings, engines, mining rig, paint, lights) are shown but not interactive until S6/S7.
-- [ ] **S5 — Return screen + first run + saves.** Return screen sequence, first-run guidance, versioned save, export/import, dev panel behind a flag.
+- [x] **S5 — Return screen + first run + saves.** Return screen sequence, first-run guidance, versioned save, export/import, dev panel behind a flag.
+  - Done 2026-11-24. Return screen (`views/returnScreen.ts`) follows the mood board shift report and the GDD order: welcome back and time away; credits, ore mined / colony fee / you keep (counting up); other items made or used; skill bars filling with an amber "LEVEL N!" burst and a sound; event cards flipping in (good bright, bad grey with "Already taken", repeats grouped); best of the shift last; next goal and timers; Collect all / goal / Change action. About 4 s; tapping anywhere skips. It also appears when a tab wakes after more than a minute.
+  - Engine: `advance()` now reports ore mined before and after the fee, and stall sales.
+  - Saves (`ui/save.ts`, tested): tagged format v2, old S4 saves migrate automatically, every field validated so a damaged save can't crash the game; a backup slot refreshed every 30 min and before any import or reset; falls back to the backup if the main save is damaged; export/import as a `DEEPCORE:` text code or file. Settings screen (☰ in the header).
+  - First-run guidance: a "Next goal" coach card on every screen, following the oil depot chain and then home rank, with a Go button; can be hidden in Settings.
 - [ ] **S6 — Starship + quality design pass.** Use the sim to set quality ceilings and roll chances, module material-tier recipes, parts per module, install fees, the hangar rank gate, fuel numbers, the awarded ship's quality and the XP tuning to hit section 3's targets. Write the results into the GDD.
 - [ ] **S7 — Starship + fuel + launch.** Hangar, modules, ship quality, oil and fuel, the launch roll and failure outcomes, the prestige reward (ship + robot), the ending screen.
 - [ ] **S8 — Playtest + balance + release.** Full playthrough with the sim and by hand, tune, update the GDD, tag v0.1, publish.

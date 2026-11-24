@@ -18,6 +18,7 @@ import { addItem, averageQualityOf, removeRecipe } from './inventory';
 import { rollBarQuality, rollCraftQuality, rollOreQuality } from './qualityRules';
 import { rollRandomEvent, type RandomEvent } from './randomEvents';
 import type { Rng } from './rng';
+import { colonyFee } from './reputation';
 import { sellOne, tradingXpForSale } from './stall';
 import { recordSale } from './contracts';
 import { mineKey, type GameState, type QueueStep } from './state';
@@ -35,13 +36,17 @@ export type GameEvent =
 export interface AdvanceResult {
   events: GameEvent[];
   actions: number;
+  /** Ore mined per ore id: `gross` before the colony's fee, `kept` whole units banked. For the return screen. */
+  mined: Record<string, { gross: number; kept: number }>;
+  /** Credits earned at the stall. */
+  sales: number;
 }
 
 /** Safety cap on actions processed in one call (72 h offline is well under it). */
 export const MAX_ACTIONS_PER_ADVANCE = 500_000;
 
 export function advance(s: GameState, ms: number, rng: Rng): AdvanceResult {
-  const result: AdvanceResult = { events: [], actions: 0 };
+  const result: AdvanceResult = { events: [], actions: 0, mined: {}, sales: 0 };
   let left = Math.max(0, ms);
   while (left > 0) {
     const step = s.queue[0];
@@ -133,6 +138,9 @@ function mine(s: GameState, step: QueueStep, ore: Ore, rng: Rng, result: Advance
     addItem(s.inventory, ore.id, rollOreQuality(ore, ml, rng), whole);
     step.done += whole;
   }
+  const m = (result.mined[ore.id] ??= { gross: 0, kept: 0 });
+  m.gross += kept / (1 - colonyFee(step.colony, s.rep[step.colony]));
+  m.kept += whole;
   // XP is per action and ignores the fee (GDD).
   gainXp(s, 'mining', ore.xp, result);
   if (rng() < gemChance(ore)) {
@@ -154,6 +162,7 @@ function refine(s: GameState, step: QueueStep, rng: Rng, result: AdvanceResult):
 function sell(s: GameState, step: QueueStep, result: AdvanceResult): void {
   const sale = sellOne(s, step.colony)!;
   step.done++;
+  result.sales += sale.credits;
   recordSale(s, sale.credits);
   gainXp(s, 'trading', tradingXpForSale(sale.credits), result);
 }

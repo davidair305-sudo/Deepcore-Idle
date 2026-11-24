@@ -10,6 +10,7 @@ import { levelProgress } from '../../engine/xp';
 import { duration, esc, fmt, pct } from '../format';
 import { itemIcon as icon } from '../icons';
 import { store } from '../store';
+import type { Goal } from '../goals';
 import { ui, type Route } from '../uiState';
 
 // Pieces shared by every screen: header, sidebar, right column, cards.
@@ -23,6 +24,7 @@ export const ROUTE_NAMES: Record<Route, string> = {
   city: 'City Center',
   inventory: 'Inventory',
   hangar: 'Hangar',
+  settings: 'Settings',
 };
 
 const SKILL_ROUTE: Record<SkillId, Route> = { mining: 'mining', refining: 'refining', crafting: 'crafting', trading: 'stall' };
@@ -35,6 +37,7 @@ export function header(s: GameState): string {
     <div class="where"><small>You are here</small><b>${esc(c.shortName === 'Authority' ? 'Deepcore Colony' : c.name)} <i>›</i> ${ROUTE_NAMES[ui.route]}</b></div>
     <div class="badge">Fee ${pct(colonyFee(s.colony, s.rep[s.colony]))} · Rank ${r}</div>
     ${ui.route === 'map' ? '<button class="btn ghost" data-act="back-to-work">Close map</button>' : '<button class="btn amber" data-act="route" data-to="map">Map</button>'}
+    <button class="btn ghost gear" data-act="route" data-to="settings" aria-label="Settings">☰</button>
     <div class="credits"><small>Credits</small><b class="num" data-live="credits">${fmt(s.credits)} CR</b></div>
   </header>`;
 }
@@ -174,4 +177,11 @@ export function actionButtons(s: GameState, kind: ActionKind, target: string, bl
     : `<button class="btn amber" data-act="start" data-kind="${kind}" data-target="${target}">Start</button>`;
   const queue = s.queueSlots > 1 ? `<button class="btn ghost" data-act="enqueue" data-kind="${kind}" data-target="${target}">+ Queue</button>` : '';
   return `<div class="acts">${start}${queue}</div>`;
+}
+
+/** First-run guidance: the next goal, with a button that goes there. */
+export function coachCard(g: Goal): string {
+  return `<section class="coach"><div><small class="kicker amber-k">Next goal</small><b>${esc(g.title)}</b><p class="dim">${esc(g.detail)}</p>${
+    g.progress != null ? `<span class="thin"><i style="width:${(g.progress * 100).toFixed(0)}%"></i></span>` : ''
+  }</div><div class="coach-btns"><button class="btn amber sm" data-act="goal">${esc(g.go)}</button><button class="btn ghost sm" data-act="hide-tips">Hide tips</button></div></section>`;
 }
