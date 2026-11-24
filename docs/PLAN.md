@@ -171,7 +171,10 @@ Each session ends with tests passing, a commit and push, and these checkboxes up
     1. **Credits pile up:** ~1.2M by day 21, and kits only cost ~245k in total. Module install fees and repairs must absorb roughly 1M+ by launch.
     2. **Crafting stalls at ~28** for a value-chasing player: between Crafting 15 and 30, crafted parts add less value per hour than donating bars. The ship requirements must be what pulls players into Crafting (S6/S7 bot goals).
     3. **Trading XP is too generous:** one sales push (oil step 4) took Trading from 1 to 29, because XP = 5 + 50% of credits per sale. Tune it.
-- [ ] **S4 — UI port.** All screens rebuilt on the engine with the mood board styling; queue editor; quality shown on items; phone layout.
+- [x] **S4 — UI port.** All screens rebuilt on the engine with the mood board styling; queue editor; quality shown on items; phone layout.
+  - Done 2026-11-24. `src/ui/`: `app.ts` (shell, input, real-time loop on wall-clock time), `store.ts` (state, simple save, ops log), `views/common.ts` + `views/screens.ts`, `style.css` (the mood board's 12-colour palette; Silkscreen, VT323 and Chakra Petch; cut corners). Screens: belt map, mining, refinery, workshop, stall (sliders, list order), market (donate, broker, kit trader), task board (oil chain + contracts), inventory (quality stacks), hangar placeholder, shift queue, colony standing, ops log. Phone layout uses a bottom tab bar.
+  - Dev tools appear only in dev builds or with `?dev=1`; they never touch offline time.
+  - Deferred: the full return screen (S5; for now a one-line "while you were away" bar), pixel scene art for each skill header (the banners use a flat panel), and a "queue" control on the market's donate rows.
 - [ ] **S5 — Return screen + first run + saves.** Return screen sequence, first-run guidance, versioned save, export/import, dev panel behind a flag.
 - [ ] **S6 — Starship + quality design pass.** Use the sim to set quality ceilings and roll chances, module material-tier recipes, parts per module, install fees, the hangar rank gate, fuel numbers, the awarded ship's quality and the XP tuning to hit section 3's targets. Write the results into the GDD.
 - [ ] **S7 — Starship + fuel + launch.** Hangar, modules, ship quality, oil and fuel, the launch roll and failure outcomes, the prestige reward (ship + robot), the ending screen.
