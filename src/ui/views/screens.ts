@@ -1,25 +1,18 @@
 import { CRAFTABLES, getItem } from '../../data/items';
-import { COLONIES, KITS, KIT_TRADER_RANK, OIL_CHAIN, getColony } from '../../data/world';
-import {
-  MINE_TIME_MS,
-  actionTimeMs,
-  blockReason,
-  equippedKit,
-  getBar,
-  getOre,
-  keptOrePerAction,
-  level,
-} from '../../engine/actions';
+import type { ColonyId } from '../../data/types';
+import { COLONIES, HOME_COLONY, KITS, KIT_TRADER_RANK, OIL_CHAIN, getColony } from '../../data/world';
+import { MINE_TIME_MS, actionTimeMs, blockReason, equippedKit, getBar, getOre, keptOrePerAction, level } from '../../engine/actions';
 import { boardFor, currentOilStep, msToNextBoard, oilBlockReason } from '../../engine/contracts';
 import { countItem, qualitiesOf } from '../../engine/inventory';
 import { qualityTier } from '../../engine/quality';
-import { colonyFee, rankForRep } from '../../engine/reputation';
-import { currentWare, normalSpeedPrice, saleSpeed, saleTimeMs } from '../../engine/stall';
+import { colonyFee, rankForRep, rankProgress } from '../../engine/reputation';
+import { MAX_WARES, currentWare, normalSpeedPrice, saleSpeed, saleTimeMs } from '../../engine/stall';
 import type { ActionKind, GameState, QueueStep } from '../../engine/state';
 import { marketValue, unitValue } from '../../engine/value';
 import { esc, fmt, money, pct } from '../format';
-import { itemIcon } from '../icons';
-import { ui } from '../uiState';
+import { drawItem, itemIcon } from '../icons';
+import { P, Px, asteroidScene, cityCenterScene, craftingScene, hangarScene, miningScene, refiningScene, tradeRingScene } from '../pixel';
+import { ui, type MapSite } from '../uiState';
 import { actionButtons, banner, iconBox, itemHead, qualityLabel } from './common';
 
 const fakeStep = (s: GameState, kind: ActionKind, target: string): QueueStep => ({
@@ -33,34 +26,90 @@ const fakeStep = (s: GameState, kind: ActionKind, target: string): QueueStep => 
 });
 
 const perHour = (ms: number) => 3_600_000 / ms;
+const running = (s: GameState, kind: ActionKind) => s.queue[0]?.kind === kind;
+const colonyLabel = (id: ColonyId) => (id === HOME_COLONY ? 'Deepcore Colony' : getColony(id).name);
 
-// ---------- Belt map ----------
-
-export function mapScreen(s: GameState): string {
-  const pos = [
-    [20, 62],
-    [50, 30],
-    [80, 64],
-  ];
-  const nodes = COLONIES.map((c, i) => {
-    const r = rankForRep(s.rep[c.id]);
-    const working = s.queue[0]?.colony === c.id;
-    return `<button class="node${c.id === s.colony ? ' here' : ''}" style="left:${pos[i]![0]}%;top:${pos[i]![1]}%" data-act="enter" data-colony="${c.id}">
-      <span class="rock" aria-hidden="true"></span>
-      <b>${esc(c.shortName === 'Authority' ? 'Deepcore Colony' : c.name)}</b>
-      <small class="num">Rank ${r}/10 · fee ${pct(colonyFee(c.id, s.rep[c.id]))}</small>
-      ${working ? '<small class="work">Working here</small>' : ''}
-    </button>`;
-  }).join('');
-  return `${banner('Sector 9 // Outer belt', 'Mining belt')}
-    <div class="map"><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true"><path d="M20 38 L50 19 L80 40" fill="none" stroke="#4FD1E8" stroke-width=".3" stroke-dasharray="1.2 1" opacity=".6"/></svg>${nodes}</div>
-    <div class="cards two">${COLONIES.map(
-      (c) => `<button class="card pick" data-act="enter" data-colony="${c.id}"><h3>${esc(c.name)}</h3>
-        <p>${c.ores.map((o) => getItem(o).name).join(', ')}</p><p class="dim">${esc(c.note)}</p></button>`,
-    ).join('')}</div>`;
+function tabs<T extends string>(act: string, current: T, list: [T, string][]): string {
+  return `<div class="tabs" role="tablist">${list
+    .map(([id, name]) => `<button role="tab" aria-selected="${id === current}" class="tab${id === current ? ' on' : ''}" data-act="${act}" data-tab="${id}">${name}</button>`)
+    .join('')}</div>`;
 }
 
-// ---------- Mining ----------
+// ---------- Asteroid map (mood board "Asteroid map") ----------
+
+interface Site {
+  id: MapSite;
+  name: string;
+  /** Position on the map, percent. */
+  x: number;
+  y: number;
+}
+
+const SITES: Site[] = [
+  { id: 'authority', name: 'Deepcore Colony', x: 27, y: 52 },
+  { id: 'union', name: "Miners' Union", x: 40, y: 30 },
+  { id: 'corporate', name: 'Corporate Claim', x: 62, y: 66 },
+  { id: 'oil', name: 'Oil fields', x: 22, y: 77 },
+  { id: 'abandoned', name: 'Abandoned colony', x: 92, y: 29 },
+];
+
+function siteState(s: GameState, id: MapSite): 'here' | 'open' | 'locked' | 'ship' {
+  if (id === 'abandoned') return 'ship';
+  if (id === 'oil') return s.oil.oilDepot ? 'open' : 'locked';
+  return s.colony === id ? 'here' : 'open';
+}
+
+function sitePanel(s: GameState, id: MapSite): string {
+  const st = siteState(s, id);
+  if (id === 'oil')
+    return `<small class="kicker">Deepcore Colony</small><h2 class="site-h">Oil fields</h2><span class="tag ${st === 'open' ? 'cyan' : 'grey'}">${st === 'open' ? 'Open' : 'Locked'}</span>
+      <p>The only oil on the asteroid. ${s.oil.oilDepot ? 'Your depot is built. Extracting oil and refining fuel arrive with the ship build.' : 'The Authority opens it when you finish the <b>oil depot</b> mission at City Center.'}</p>`;
+  if (id === 'abandoned')
+    return `<small class="kicker">Off the asteroid</small><h2 class="site-h">Abandoned colony</h2><span class="tag grey">Needs a ship</span>
+      <p>An empty claim on a small rock past the night side: no fees, no rules, no one to ask. You'll need a ship that can launch, and some luck, to get there. Your first destination once you leave the asteroid.</p>`;
+  const c = getColony(id);
+  const rep = s.rep[id];
+  const r = rankForRep(rep);
+  const cells = Array.from({ length: 16 }, (_, i) => `<i${i < Math.round(rankProgress(rep) * 16) ? ' class="on"' : ''}></i>`).join('');
+  const can = [
+    `Mining: ${c.ores.map((o) => getItem(o).name.toLowerCase()).join(', ')}`,
+    `Refining: ${c.bars.map((b) => getItem(b).name.replace(' bar', '').toLowerCase()).join(', ')} bars`,
+    `Trade ring: your stall${c.hasBroker ? ' and the broker' : ''}`,
+    `City Center: task board${id === HOME_COLONY ? ', the oil depot mission' : ''}, presenting goods`,
+  ];
+  return `<small class="kicker">${id === HOME_COLONY ? 'Home colony' : 'Colony'}</small><h2 class="site-h">${esc(colonyLabel(id))}</h2>
+    ${st === 'here' ? '<span class="tag amber">You are here</span>' : ''}
+    <div class="duo"><div class="stat"><small>Colony fee</small><b class="num amber-t">${pct(colonyFee(id, rep))}</b></div><div class="stat"><small>Your standing</small><b class="num cyan-t">Rank ${r}</b></div></div>
+    <div class="cells big">${cells}</div>
+    <h3 class="kicker amber-k">What you can do here</h3>
+    <ul class="can">${can.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+    <p class="dim">${esc(c.note)} Standing here is separate from every other colony.</p>`;
+}
+
+export function mapScreen(s: GameState): string {
+  const sel = ui.mapSite ?? s.colony;
+  const markers = SITES.map((site) => {
+    const st = siteState(s, site.id);
+    return `<button class="site ${st}${sel === site.id ? ' sel' : ''}" style="left:${site.x}%;top:${site.y}%" data-act="site" data-site="${site.id}">
+      <i aria-hidden="true"></i><span>${esc(site.name)}</span></button>`;
+  }).join('');
+  const st = siteState(s, sel);
+  const btn =
+    st === 'here'
+      ? `<button class="btn ghost wide" data-act="back-to-work">Back to work</button>`
+      : st === 'open' && sel !== 'oil'
+        ? `<button class="btn amber wide" data-act="enter" data-colony="${sel}">Go here</button>`
+        : '';
+  return `<div class="mapwrap">
+    <div class="mapcol">
+      <div class="mapbox">${asteroidScene()}${markers}</div>
+      <div class="legend"><span><i class="d here"></i>You are here</span><span><i class="d open"></i>Open</span><span><i class="d locked"></i>Locked</span><span><i class="d ship"></i>Needs a ship</span></div>
+    </div>
+    <aside class="sitepanel">${sitePanel(s, sel)}${btn}</aside>
+  </div>`;
+}
+
+// ---------- Skill screens ----------
 
 export function miningScreen(s: GameState): string {
   const c = getColony(s.colony);
@@ -78,12 +127,11 @@ export function miningScreen(s: GameState): string {
       </article>`;
     })
     .join('');
-  return `${banner(`${c.shortName} // Deep shaft`, 'Mining', ['Colony fee', pct(colonyFee(s.colony, s.rep[s.colony]))])}
+  const colours = c.ores.map((o) => ({ copper: P.copper, tin: P.plate, iron: P.rust, nickel: P.bone, cobalt: P.cyan, silicate: P.bone, ferrocite: P.red, titanium: P.plate, gravium: P.cyan, cryolite: P.cyan, palladium: P.molten, nullstone: P.gunmetal })[o] ?? P.copper);
+  return `${banner(`${colonyLabel(s.colony)} // Deep shaft`, 'Mining', ['Colony fee', pct(colonyFee(s.colony, s.rep[s.colony]))], miningScene(colours, running(s, 'mine')))}
     <p class="note">Kit: <b>${esc(equippedKit(s).name)}</b> ×${equippedKit(s).yieldMultiplier} · The colony takes its fee from your ore, never your XP. Higher Mining level means better ore quality.</p>
     <div class="cards">${cards}</div>`;
 }
-
-// ---------- Refining ----------
 
 function recipeLine(s: GameState, recipe: Readonly<Record<string, number>>): string {
   return Object.entries(recipe)
@@ -111,12 +159,10 @@ export function refiningScreen(s: GameState): string {
       </article>`;
     })
     .join('');
-  return `${banner(`${c.shortName} // Smelter`, 'Refinery')}
+  return `${banner(`${colonyLabel(s.colony)} // Smelter`, 'Refining', undefined, refiningScene(running(s, 'refine')))}
     <p class="note">Bars keep 70% of their ore's quality at the level requirement, rising to 100% with skill. The NPC refiner is instant but keeps 40% of the bars, pours worse bars and gives no XP.</p>
     <div class="cards">${cards}</div>`;
 }
-
-// ---------- Crafting ----------
 
 export function craftingScreen(s: GameState): string {
   const card = (id: string) => {
@@ -130,64 +176,109 @@ export function craftingScreen(s: GameState): string {
       ${actionButtons(s, 'craft', id, blocked)}
     </article>`;
   };
-  return `${banner('Workshop // Fabrication bay', 'Crafting')}
+  return `${banner('Workshop // Fabrication bay', 'Crafting', undefined, craftingScene(running(s, 'craft')))}
     <p class="note">Each craft rolls botched, standard, fine or masterwork. Higher Crafting means fewer botches; a perfect craft (quality 100) needs top materials and a masterwork roll.</p>
     <h2>Starship parts</h2><div class="cards">${CRAFTABLES.filter((c) => c.kind === 'part').map((c) => card(c.id)).join('')}</div>
     <h2>Gems and jewelry</h2><div class="cards">${CRAFTABLES.filter((c) => c.kind === 'jewelry').map((c) => card(c.id)).join('')}</div>`;
 }
 
-// ---------- Stall ----------
+// ---------- Trade ring (mood board "Your stall") ----------
 
-export function stallScreen(s: GameState): string {
+function oilTokenStat(s: GameState): string {
+  const step = currentOilStep(s);
+  if (!step?.salesValue) return '';
+  return `<div class="stat wide"><small>Oil depot mission · stall token</small><b class="num cyan-t">${fmt(s.oil.sales)} / ${fmt(step.salesValue)} CR sold</b><span class="thin"><i style="width:${Math.min(100, (s.oil.sales / step.salesValue) * 100)}%"></i></span></div>`;
+}
+
+function stallTab(s: GameState): string {
   const tl = level(s, 'trading');
   const cur = currentWare(s);
+  const open = running(s, 'sell');
   const est = cur ? perHour(saleTimeMs(s)) * marketValue(s.colony, cur.item, qualitiesOf(s.inventory, cur.item, cur.pick)[0] ?? 1) * cur.price : 0;
-  const oilStep = currentOilStep(s);
-  const oilSales = oilStep?.salesValue
-    ? `<div class="stat wide"><small>Oil depot mission · stall token</small><b class="num">${fmt(s.oil.sales)} / ${fmt(oilStep.salesValue)} CR sold</b><span class="thin"><i style="width:${Math.min(100, (s.oil.sales / oilStep.salesValue) * 100)}%"></i></span></div>`
-    : '';
-  const wares = s.stall
-    .map((w, i) => {
-      const n = countItem(s.inventory, w.item);
-      const q = qualitiesOf(s.inventory, w.item, w.pick)[0] ?? 1;
-      const each = marketValue(s.colony, w.item, q) * w.price;
-      const speed = saleSpeed(w.price, tl);
-      return `<li class="ware${n ? '' : ' empty'}">
-        ${iconBox(w.item)}
-        <div class="ware-main">
-          <div class="ware-h"><b>${i + 1}. ${esc(getItem(w.item).name)}</b><span class="num">×${fmt(n)} ${qualityLabel(s.inventory[w.item])}</span></div>
-          <label class="slider"><span class="sr">Price for ${esc(getItem(w.item).name)}</span>
-            <input type="range" min="25" max="300" step="5" value="${Math.round(w.price * 100)}" data-act="price" data-item="${w.item}">
-          </label>
-          <div class="chips"><span>Price <b>${Math.round(w.price * 100)}%</b> of market</span><span><b>${money(each)} cr</b> each</span><span>Speed <b>${speed.toFixed(2)}×</b></span></div>
-        </div>
-        <div class="ware-btns">
-          <button class="btn ghost sm" data-act="ware-up" data-item="${w.item}" aria-label="Sell earlier">▲</button>
-          <button class="btn ghost sm" data-act="ware-down" data-item="${w.item}" aria-label="Sell later">▼</button>
-          <button class="btn ghost sm" data-act="ware-reset" data-item="${w.item}">Market</button>
-          <button class="btn ghost sm" data-act="unlist" data-item="${w.item}">Remove</button>
-        </div>
-      </li>`;
+  const avgSpeed = s.stall.length ? s.stall.reduce((a, w) => a + saleSpeed(w.price, tl), 0) / s.stall.length : 0;
+  const customers = open ? Math.max(2, Math.round(3 + avgSpeed * 5)) : 2;
+
+  // Inventory grid: tap an item, then put it on the stall.
+  const ids = Object.keys(s.inventory);
+  const sel = ui.stallItem && ids.includes(ui.stallItem) ? ui.stallItem : (ids[0] ?? null);
+  const grid = ids
+    .map((id) => {
+      const listed = s.stall.some((w) => w.item === id);
+      return `<button class="tile${id === sel ? ' sel' : ''}" data-act="stall-pick" data-item="${id}">${listed ? '<span class="tag amber">On stall</span>' : ''}${iconBox(id)}<span>${esc(getItem(id).name)}</span><b class="num cyan-t">×${fmt(countItem(s.inventory, id))}</b></button>`;
     })
     .join('');
-  const addable = Object.keys(s.inventory).filter((id) => !s.stall.some((w) => w.item === id));
-  return `${banner(`${getColony(s.colony).shortName} // Trade ring`, 'Your stall', ['Normal-speed price', pct(normalSpeedPrice(tl))])}
+
+  let panel = '<p class="note">Your hold is empty. Mine something first.</p>';
+  if (sel) {
+    const w = s.stall.find((x) => x.item === sel);
+    const q = qualitiesOf(s.inventory, sel, w?.pick ?? 'lowest')[0] ?? 1;
+    const price = w?.price ?? 1;
+    const each = marketValue(s.colony, sel, q) * price;
+    const speed = saleSpeed(price, tl);
+    panel = `<div class="ihead">${iconBox(sel)}<div><small class="kicker">${getItem(sel).kind} · you have ${fmt(countItem(s.inventory, sel))}</small><h3 class="pix">${esc(getItem(sel).name)}</h3></div></div>
+      <p class="dim">${qualityLabel(s.inventory[sel])} · next unit sold is quality ${q}</p>
+      <small class="kicker">Your price per unit</small>
+      <div class="price"><b class="num amber-t">${money(each)} CR</b><span class="num">${Math.round(price * 100)}% · ${speed.toFixed(2)}× speed</span></div>
+      ${w ? `<label class="slider"><span class="sr">Price</span><input type="range" min="25" max="300" step="5" value="${Math.round(price * 100)}" data-act="price" data-item="${sel}"></label>
+        <p class="dim">Market price is 100%. Lower prices sell faster.</p>
+        <div class="acts"><button class="btn ghost sm" data-act="ware-reset" data-item="${sel}">Market price</button><button class="btn ghost sm" data-act="ware-up" data-item="${sel}">Sell sooner</button><button class="btn ghost sm" data-act="ware-down" data-item="${sel}">Sell later</button></div>
+        <button class="btn ghost wide" data-act="unlist" data-item="${sel}">Take off stall</button>`
+        : `<p class="dim">Market price is 100%. Put it on the stall, then slide the price.</p>
+        <button class="btn amber wide" data-act="list" data-item="${sel}" ${s.stall.length >= MAX_WARES ? 'disabled' : ''}>${s.stall.length >= MAX_WARES ? 'All 6 slots are full' : 'Put on stall'}</button>`}`;
+  }
+
+  const order = s.stall.length
+    ? `<ol class="order">${s.stall.map((w) => `<li class="${countItem(s.inventory, w.item) ? '' : 'empty'}">${itemIcon(w.item)} ${esc(getItem(w.item).name)} <span class="num">${Math.round(w.price * 100)}%</span></li>`).join('')}</ol>`
+    : '';
+
+  return `<div class="scene-box">${tradeRingScene(s.stall.map((w) => (p: Px, x: number, y: number) => drawItem(p, w.item, x, y)), customers, open)}</div>
     <div class="stats">
       ${actionButtons(s, 'sell', 'stall', s.stall.length && cur ? null : 'Add wares to open')}
       <div class="stat"><small>Est. sales</small><b class="num">${fmt(est)} CR/H</b></div>
-      ${oilSales}
+      <div class="stat"><small>Customers browsing</small><b class="num">${open ? customers : 0}</b></div>
+      ${oilTokenStat(s)}
     </div>
-    <p class="note">Wares sell one unit at a time, top of the list first. The slider starts at market price: higher sells slower, lower sells faster. Each sale also earns reputation worth 20% of the item's value, whatever your price.</p>
-    <ol class="wares">${wares || '<li class="note">No wares yet. Add something below.</li>'}</ol>
-    <h2>Add wares</h2>
-    <div class="chipbtns">${addable.length ? addable.map((id) => `<button class="btn ghost sm" data-act="list" data-item="${id}">${itemIcon(id)} ${esc(getItem(id).name)} ×${fmt(countItem(s.inventory, id))}</button>`).join('') : '<p class="note">Nothing else to sell.</p>'}</div>`;
+    <div class="stallgrid">
+      <section><div class="row-h"><h2>Inventory</h2><span class="dim">Tap an item, then put it on the stall. ${s.stall.length}/${MAX_WARES} slots used.</span></div>
+        <div class="tiles">${grid}</div>
+        ${order ? `<h2>Selling order</h2><p class="dim">One unit at a time, top first. Normal-speed price at your Trading level: ${pct(normalSpeedPrice(tl))}.</p>${order}` : ''}
+      </section>
+      <aside class="panel selpanel">${panel}</aside>
+    </div>`;
 }
 
-// ---------- Market: broker, donations, kit trader ----------
-
-export function marketScreen(s: GameState): string {
+function brokerTab(s: GameState): string {
   const c = getColony(s.colony);
+  if (!c.hasBroker) return `<p class="note">Only Deepcore Colony has a broker.</p>`;
+  return `<p class="note">The broker pays instantly: 60% of value in credits, plus 20% as Authority reputation. The worst-quality units go first.</p>${cashOutTable(s, 'broker')}`;
+}
+
+function kitsTab(s: GameState): string {
+  const rank = rankForRep(s.rep[s.colony]);
+  if (rank < KIT_TRADER_RANK) return `<p class="note">The kit trader only deals with rank ${KIT_TRADER_RANK} miners in ${esc(getColony(s.colony).shortName)}. You're rank ${rank}.</p>`;
+  return `<div class="cards">${KITS.filter((k) => k.price > 0)
+    .map((k) => {
+      const own = s.kits.includes(k.id);
+      return `<article class="card${own ? ' on' : ''}"><h3>${esc(k.name)}</h3><p class="num">×${k.yieldMultiplier} yield · Mining ${k.miningLevel}</p><p class="dim">${fmt(k.price)} cr</p>
+        <button class="btn ${own ? 'ghost' : 'amber'}" data-act="buykit" data-kit="${k.id}" ${own || s.credits < k.price ? 'disabled' : ''}>${own ? 'Owned' : 'Buy'}</button></article>`;
+    })
+    .join('')}</div>`;
+}
+
+export function stallScreen(s: GameState): string {
+  const list: ['stall' | 'broker' | 'kits', string][] = [['stall', 'Your stall'], ['kits', 'Kit trader']];
+  if (getColony(s.colony).hasBroker) list.splice(1, 0, ['broker', 'Broker']);
+  const tab = list.some(([t]) => t === ui.tradeTab) ? ui.tradeTab : 'stall';
+  const body = tab === 'stall' ? stallTab(s) : tab === 'broker' ? brokerTab(s) : kitsTab(s);
+  return `${banner(`${colonyLabel(s.colony)} // Trade ring`, 'Trade ring', ['Normal-speed price', pct(normalSpeedPrice(level(s, 'trading')))])}
+    ${tabs('trade-tab', tab, list)}${body}`;
+}
+
+// ---------- City Center (mood board "City Center") ----------
+
+function cashOutTable(s: GameState, mode: 'donate' | 'broker'): string {
   const ids = Object.keys(s.inventory);
+  if (!ids.length) return '<p class="note">Your hold is empty.</p>';
   const rows = ids
     .map((id) => {
       const n = countItem(s.inventory, id);
@@ -202,70 +293,92 @@ export function marketScreen(s: GameState): string {
           <label class="sr" for="amt-${id}">Amount of ${esc(getItem(id).name)}</label>
           <input class="amt" id="amt-${id}" type="number" min="1" max="${n}" value="${amt}" data-act="amount" data-item="${id}">
           <button class="btn ghost sm" data-act="amt-all" data-item="${id}">All</button>
-          <button class="btn sm" data-act="donate" data-item="${id}">Donate</button>
-          ${c.hasBroker ? `<button class="btn ghost sm" data-act="broker" data-item="${id}">Broker</button>` : ''}
+          <button class="btn sm amber" data-act="${mode}" data-item="${id}">${mode === 'donate' ? 'Present' : 'Sell'}</button>
         </div></td>
       </tr>`;
     })
     .join('');
-  const rank = rankForRep(s.rep[s.colony]);
-  const kits =
-    rank >= KIT_TRADER_RANK
-      ? `<div class="cards">${KITS.filter((k) => k.price > 0)
-          .map((k) => {
-            const own = s.kits.includes(k.id);
-            return `<article class="card${own ? ' on' : ''}"><h3>${esc(k.name)}</h3><p class="num">×${k.yieldMultiplier} yield · Mining ${k.miningLevel}</p><p class="dim">${fmt(k.price)} cr</p>
-              <button class="btn ${own ? 'ghost' : 'amber'}" data-act="buykit" data-kit="${k.id}" ${own || s.credits < k.price ? 'disabled' : ''}>${own ? 'Owned' : 'Buy'}</button></article>`;
-          })
-          .join('')}</div>`
-      : `<p class="note">The kit trader only deals with rank ${KIT_TRADER_RANK} miners in ${esc(c.shortName)}. You're rank ${rank}.</p>`;
-  return `${banner(`${c.shortName} // Exchange`, 'Market')}
-    <p class="note">Donate: 20% of value in credits and 80% as reputation here. ${c.hasBroker ? 'Broker: instant 60% in credits and 20% as Authority reputation. ' : ''}The worst-quality units go first.</p>
-    ${ids.length ? `<div class="scroll"><table><thead><tr><th>Item</th><th>Qty</th><th>Quality</th><th>Value</th><th>Cash out</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="note">Your hold is empty.</p>'}
-    <h2>Kit trader</h2>${kits}`;
+  return `<div class="scroll"><table><thead><tr><th>Item</th><th>Qty</th><th>Quality</th><th>Value each</th><th>${mode === 'donate' ? 'Present' : 'Sell'}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-// ---------- Task board ----------
-
-export function boardScreen(s: GameState, now: number): string {
+function missionTab(s: GameState): string {
+  if (s.colony !== HOME_COLONY) return `<p class="note">The oil depot mission is posted at the Deepcore Colony mission desk.</p>`;
+  const rows = OIL_CHAIN.map((step, i) => {
+    const done = i < s.oil.step;
+    const cur = i === s.oil.step;
+    let prog = done ? 1 : 0;
+    let label = done ? 'Done' : cur ? '' : 'Locked';
+    if (cur && step.deliver) {
+      const parts = Object.entries(step.deliver);
+      prog = parts.reduce((a, [id, n]) => a + Math.min(1, countItem(s.inventory, id) / n), 0) / parts.length;
+      label = `${Math.round(prog * 100)}%`;
+    } else if (cur && step.salesValue) {
+      prog = Math.min(1, s.oil.sales / step.salesValue);
+      label = `${fmt(s.oil.sales)} / ${fmt(step.salesValue)} CR`;
+    } else if (cur) {
+      prog = s.oil.token ? 1 : 0;
+      label = s.oil.token ? 'Ready' : '';
+    }
+    return `<li class="mstep${done ? ' done' : ''}${cur ? ' cur' : ''}"><b class="pix">${String(i + 1).padStart(2, '0')}</b><div><span>${esc(step.name)}</span><span class="thin"><i style="width:${(prog * 100).toFixed(0)}%"></i></span></div><em class="num">${label}</em></li>`;
+  }).join('');
   const step = currentOilStep(s);
   const reason = oilBlockReason(s);
-  const need = step?.deliver
-    ? Object.entries(step.deliver)
-        .map(([id, n]) => `<span class="${countItem(s.inventory, id) >= n ? '' : 'short'}">${fmt(Math.min(countItem(s.inventory, id), n))}/${fmt(n)} ${esc(getItem(id).name)}</span>`)
-        .join(' · ')
-    : step?.salesValue
-      ? `${fmt(s.oil.sales)}/${fmt(step.salesValue)} cr sold at your stall`
-      : step?.handInToken
-        ? 'Depot token ready'
-        : '';
   const r = step?.reward;
   const reward = r
     ? [r.rep && `+${fmt(r.rep)} Authority rep`, r.credits && `+${fmt(r.credits)} cr`, r.xp && `+${fmt(r.xp.amount)} ${r.xp.skill} XP`, r.kit && KITS.find((k) => k.id === r.kit)?.name, r.hangar && 'Hangar opens', r.token && 'Depot token', r.oilDepot && 'Oil depot + oil depot kit']
         .filter(Boolean)
         .join(' · ')
     : '';
-  const chain = step
-    ? `<article class="card story"><small>Story contract · Deepcore Colony Authority · step ${s.oil.step + 1}/${OIL_CHAIN.length}</small>
-        <h3>${esc(step.name)}</h3><p>${esc(step.text)}</p><p class="num">${need}</p><p class="dim">Reward: ${esc(reward)}</p>
-        <button class="btn amber" data-act="oil" ${reason ? 'disabled' : ''}>${reason ? esc(reason) : 'Turn in'}</button>
-        <span class="thin"><i style="width:${(s.oil.step / OIL_CHAIN.length) * 100}%"></i></span></article>`
-    : `<article class="card story"><h3>Oil depot open</h3><p>Oil extraction and fuel arrive with the ship build.</p></article>`;
+  const need = step?.deliver
+    ? Object.entries(step.deliver)
+        .map(([id, n]) => `<span class="${countItem(s.inventory, id) >= n ? '' : 'short'}">${fmt(Math.min(countItem(s.inventory, id), n))} / ${fmt(n)} ${esc(getItem(id).name)}</span>`)
+        .join('<br>')
+    : step?.salesValue
+      ? `${fmt(s.oil.sales)} / ${fmt(step.salesValue)} CR`
+      : 'Depot token';
+  const card = step
+    ? `<aside class="panel stepcard"><small class="kicker">Step ${String(s.oil.step + 1).padStart(2, '0')} of ${String(OIL_CHAIN.length).padStart(2, '0')}</small>
+        <h3 class="pix">${esc(step.name)}</h3><p>${esc(step.text)}</p>
+        <div class="stat"><small>Progress</small><b class="num cyan-t">${need}</b></div>
+        <small class="kicker">Reward</small><p class="amber-t">${esc(reward)}</p>
+        <button class="btn amber wide" data-act="oil" ${reason ? 'disabled' : ''}>${reason ? esc(reason) : 'Turn in'}</button></aside>`
+    : `<aside class="panel stepcard"><h3 class="pix">Oil depot open</h3><p>The oil fields are yours. Extracting oil and refining fuel arrive with the ship build.</p></aside>`;
+  return `<div class="row-h"><h2>Mission · Open the oil depot</h2><span class="num cyan-t">${Math.min(s.oil.step, OIL_CHAIN.length)} of ${OIL_CHAIN.length} steps done</span></div>
+    <div class="missiongrid"><ol class="msteps">${rows}</ol>${card}</div>`;
+}
+
+function tasksTab(s: GameState, now: number): string {
   const board = boardFor(s, s.colony, now);
   const offers = board.offers
     .map((o, i) => {
       const n = countItem(s.inventory, o.item);
       return `<article class="card${o.done ? ' on' : ''}">${itemHead(o.item, `${getItem(o.item).kind === 'ore' ? 'Mining' : 'Refinery'} contract`)}
-        <p class="num">${fmt(Math.min(n, o.amount))}/${fmt(o.amount)} ${esc(getItem(o.item).name)}</p>
+        <p class="num">${fmt(Math.min(n, o.amount))} / ${fmt(o.amount)} ${esc(getItem(o.item).name)}</p>
         <p class="dim">Pays ${fmt(o.credits)} cr · +${fmt(o.rep)} rep</p>
         <button class="btn${o.done ? ' ghost' : ' amber'}" data-act="contract" data-i="${i}" ${o.done || n < o.amount ? 'disabled' : ''}>${o.done ? 'Delivered' : 'Deliver'}</button></article>`;
     })
     .join('');
   const left = msToNextBoard(now);
-  return `${banner(`${getColony(s.colony).shortName} // Task board`, 'Task board')}
-    ${s.colony === 'authority' ? chain : '<p class="note">The oil depot story contract is posted at Deepcore Colony.</p>'}
-    <h2>Contracts here</h2><p class="note">New contracts in ${Math.floor(left / 3_600_000)}h ${Math.floor((left % 3_600_000) / 60_000)}m. They pay 130% of value plus 80% as reputation.</p>
+  return `<p class="note">New contracts in ${Math.floor(left / 3_600_000)}h ${Math.floor((left % 3_600_000) / 60_000)}m. Contracts pay 130% of value plus 80% as reputation here. Only goods you made count.</p>
     <div class="cards">${offers || '<p class="note">Nothing you can fill here yet. Level Mining or Refining.</p>'}</div>`;
+}
+
+function presentTab(s: GameState): string {
+  return `<p class="note">Present goods to the ${esc(colonyLabel(s.colony))} government: 80% of their value becomes standing here, and you get 20% back in credits. Higher standing lowers this colony's mining fee. The worst-quality units go first.</p>${cashOutTable(s, 'donate')}`;
+}
+
+export function cityScreen(s: GameState, now: number): string {
+  const r = rankForRep(s.rep[s.colony]);
+  const tab = ui.cityTab;
+  const body = tab === 'mission' ? missionTab(s) : tab === 'tasks' ? tasksTab(s, now) : presentTab(s);
+  return `${banner(`${colonyLabel(s.colony)} // City Center`, 'City Center', ['Gov. standing', `Rank ${r}`])}
+    <div class="scene-box">${cityCenterScene()}</div>
+    ${tabs('city-tab', tab, [
+      ['tasks', 'Task board'],
+      ['mission', 'Mission desk'],
+      ['present', 'Present ore'],
+    ])}
+    ${body}`;
 }
 
 // ---------- Inventory ----------
@@ -308,13 +421,28 @@ export function inventoryScreen(s: GameState): string {
     <div class="invgrid">${body}</div>`;
 }
 
-// ---------- Hangar ----------
+// ---------- Hangar (mood board "Hangar"; building arrives in S7) ----------
+
+const SHIP_PARTS: [string, string][] = [
+  ['Hull', 'Standard Hauler'],
+  ['Nose', 'Needle'],
+  ['Cockpit', 'Bubble Canopy'],
+  ['Wings', 'Delta'],
+  ['Engines', 'Twin Burners'],
+  ['Mining rig', 'Drill Pods'],
+  ['Paint', 'Factory Grey'],
+  ['Lights', 'Dark Running'],
+];
 
 export function hangarScreen(s: GameState): string {
-  return `${banner('Deepcore Colony // Bay 3', 'Hangar')}
-    <article class="card story">${
-      s.oil.hangar
-        ? `<h3>Hangar bay open</h3><p>Your ship is a bare frame on the pad. Building modules (the Shift Scheduler first, then the launch modules) arrives in a coming update.</p>`
-        : `<h3>Hangar locked</h3><p>The Authority opens a hangar bay to you after <b>oil depot step 2: Bronze for the scaffold</b>.</p>`
-    }</article>`;
+  const open = s.oil.hangar;
+  return `${banner(`Deepcore Colony // Bay 02`, open ? 'Starter hauler' : 'Hangar', undefined)}
+    <div class="tabs"><span class="tab on">Exterior</span><span class="tab dis">Interior · later</span></div>
+    <div class="scene-box">${hangarScene(open)}</div>
+    ${
+      open
+        ? `<div class="partslots">${SHIP_PARTS.map(([slot, name], i) => `<div class="partslot${i === 0 ? ' on' : ''}"><small>${slot}</small><span>${name}</span></div>`).join('')}</div>
+           <p class="note">Your starter hauler sits on the pad. Building and fitting parts, which affect your ship's performance and launch odds, arrives in a coming update.</p>`
+        : `<p class="note">The Authority opens a hangar bay to you after <b>oil depot step 2: Bronze for the scaffold</b> (City Center → Mission desk).</p>`
+    }`;
 }

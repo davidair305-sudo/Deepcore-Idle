@@ -54,7 +54,11 @@ export function describeEvent(e: GameEvent): { text: string; tone: LogEntry['ton
 }
 
 export function logEvents(events: GameEvent[]): void {
+  // Gems are common (1–3% of mining actions): summarise them instead of one line each.
+  const gems = events.filter((e) => e.type === 'gem').length;
+  if (gems) addLog(`Found ${gems} rough gem${gems > 1 ? 's' : ''}`, 'good');
   for (const e of events) {
+    if (e.type === 'gem') continue;
     const d = describeEvent(e);
     if (d) addLog(d.text, d.tone);
   }

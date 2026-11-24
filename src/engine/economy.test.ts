@@ -5,7 +5,7 @@ import { boardFor, deliverContract, msToNextBoard, oilBlockReason, turnInOilStep
 import { addItem, countItem } from './inventory';
 import { buyKit, donate, sellToBroker } from './market';
 import { repForRank } from './reputation';
-import { clampPrice, listWare, moveWare, normalSpeedPrice, saleSpeed, saleTimeMs, setWarePrice, unlistWare } from './stall';
+import { MAX_WARES, clampPrice, listWare, moveWare, normalSpeedPrice, saleSpeed, saleTimeMs, setWarePrice, unlistWare } from './stall';
 import { newGame } from './state';
 import { advance } from './tick';
 import { marketValue, qualityValueMultiplier, unitValue } from './value';
@@ -73,6 +73,13 @@ describe('stall pricing (D14)', () => {
     expect(s.stall[0]!.price).toBe(3);
     unlistWare(s, 'tin');
     expect(s.stall.map((w) => w.item)).toEqual(['copper']);
+  });
+
+  it('has six display slots', () => {
+    const s = newGame();
+    for (const id of ['copper', 'tin', 'iron', 'nickel', 'cobalt', 'bronze']) expect(listWare(s, id)).toBe(true);
+    expect(listWare(s, 'steel')).toBe(false);
+    expect(s.stall).toHaveLength(MAX_WARES);
   });
 });
 

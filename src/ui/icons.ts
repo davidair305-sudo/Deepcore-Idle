@@ -50,16 +50,32 @@ function sprite(rows: readonly string[], colour: string): string {
   return `<svg class="ic" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
 }
 
+function rowsFor(id: string): readonly string[] {
+  const item = getItem(id);
+  if (item.kind === 'ore') return ORE;
+  if (item.kind === 'bar') return BAR;
+  if (item.kind === 'gem' || id === 'polishedGem') return GEM;
+  return item.kind === 'part' ? PART : RING;
+}
+
+const colourFor = (id: string): string => COLOUR[id] ?? (getItem(id).kind === 'part' ? '#5B6B7C' : '#F2A93B');
+
+/** Draw an item's 8×8 sprite into a pixel scene (used by the stall's display slots). */
+export function drawItem(p: { px: (x: number, y: number, c: string) => void }, id: string, x: number, y: number): void {
+  const c = colourFor(id);
+  rowsFor(id).forEach((row, j) =>
+    [...row].forEach((ch, i) => {
+      if (ch !== '.') p.px(x + i, y + j, ch === 'a' ? shade(c, 0.55) : ch === 'b' ? c : shade(c, 1.4));
+    }),
+  );
+}
+
 const cache = new Map<string, string>();
 
 export function itemIcon(id: string): string {
   const hit = cache.get(id);
   if (hit) return hit;
-  const item = getItem(id);
-  const rows =
-    item.kind === 'ore' ? ORE : item.kind === 'bar' ? BAR : item.kind === 'gem' ? GEM : item.kind === 'part' ? PART : id === 'polishedGem' ? GEM : RING;
-  const colour = COLOUR[id] ?? (item.kind === 'part' ? '#5B6B7C' : '#F2A93B');
-  const svg = sprite(rows, colour);
+  const svg = sprite(rowsFor(id), colourFor(id));
   cache.set(id, svg);
   return svg;
 }

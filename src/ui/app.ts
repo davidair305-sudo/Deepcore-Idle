@@ -9,15 +9,14 @@ import { listWare, moveWare, setWarePrice, unlistWare } from '../engine/stall';
 import type { ActionKind } from '../engine/state';
 import { duration, esc, fmt } from './format';
 import { addLog, load, logEvents, resetGame, rng, save, store, tick } from './store';
-import { ui, type Route } from './uiState';
+import { ui, type CityTab, type MapSite, type Route, type TradeTab } from './uiState';
 import { header, rightColumn, sidebar } from './views/common';
 import {
-  boardScreen,
+  cityScreen,
   craftingScreen,
   hangarScreen,
   inventoryScreen,
   mapScreen,
-  marketScreen,
   miningScreen,
   refiningScreen,
   stallScreen,
@@ -31,8 +30,7 @@ const ROUTES: Record<Route, () => string> = {
   refining: () => refiningScreen(store.state),
   crafting: () => craftingScreen(store.state),
   stall: () => stallScreen(store.state),
-  market: () => marketScreen(store.state),
-  board: () => boardScreen(store.state, Date.now()),
+  city: () => cityScreen(store.state, Date.now()),
   inventory: () => inventoryScreen(store.state),
   hangar: () => hangarScreen(store.state),
 };
@@ -72,7 +70,7 @@ export function render(): void {
   root.innerHTML = `${header(s)}
     <div class="body">
       ${sidebar(s)}
-      <main class="main">${awayNotice()}${devPanel()}<div class="screen">${main}</div>${rightColumn(s)}</main>
+      <main class="main${ui.route === 'map' ? ' full' : ''}">${awayNotice()}${devPanel()}<div class="screen">${main}</div>${ui.route === 'map' ? '' : rightColumn(s)}</main>
     </div>
     <div class="toast${ui.toast ? ' show' : ''}" role="status">${esc(ui.toast)}</div>`;
 }
@@ -121,7 +119,28 @@ function onClick(e: MouseEvent): void {
       break;
     case 'enter':
       s.colony = d.colony as ColonyId;
+      ui.mapSite = null;
       ui.route = 'mining';
+      break;
+    case 'site':
+      ui.mapSite = d.site as MapSite;
+      break;
+    case 'back-to-work': {
+      // Return to the screen for whatever is running, in the colony it runs in.
+      const cur = s.queue[0];
+      if (cur) s.colony = cur.colony;
+      ui.mapSite = null;
+      ui.route = cur ? ({ mine: 'mining', refine: 'refining', craft: 'crafting', sell: 'stall' } as const)[cur.kind] : 'mining';
+      break;
+    }
+    case 'city-tab':
+      ui.cityTab = d.tab as CityTab;
+      break;
+    case 'trade-tab':
+      ui.tradeTab = d.tab as TradeTab;
+      break;
+    case 'stall-pick':
+      ui.stallItem = item;
       break;
     case 'start':
       startAction(s, { kind: d.kind as ActionKind, target: d.target! });
@@ -144,7 +163,7 @@ function onClick(e: MouseEvent): void {
       break;
     }
     case 'list':
-      listWare(s, item);
+      if (!listWare(s, item)) toast('All 6 stall slots are full');
       break;
     case 'unlist':
       unlistWare(s, item);
@@ -221,8 +240,8 @@ function onInput(e: Event): void {
   if (d.act === 'price') {
     setWarePrice(store.state, d.item!, Number(el.value) / 100);
     // Update the numbers next to the slider without rebuilding (keeps the drag alive).
-    const chips = el.closest('.ware-main')?.querySelector('.chips');
-    if (chips && e.type === 'change') render();
+    // Re-render when the drag ends ('change'), not on every move, so the slider stays grabbed.
+    if (e.type === 'change') render();
     save();
   } else if (d.act === 'amount') {
     ui.amounts[d.item!] = Number(el.value);

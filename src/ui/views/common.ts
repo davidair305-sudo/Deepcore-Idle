@@ -15,13 +15,12 @@ import { ui, type Route } from '../uiState';
 // Pieces shared by every screen: header, sidebar, right column, cards.
 
 export const ROUTE_NAMES: Record<Route, string> = {
-  map: 'Belt map',
+  map: 'Asteroid map',
   mining: 'Mining quarter',
   refining: 'Refinery',
   crafting: 'Workshop',
   stall: 'Trade ring',
-  market: 'Market',
-  board: 'Task board',
+  city: 'City Center',
   inventory: 'Inventory',
   hangar: 'Hangar',
 };
@@ -35,7 +34,7 @@ export function header(s: GameState): string {
     <div class="brand"><span class="logo" aria-hidden="true"></span>DEEPCORE</div>
     <div class="where"><small>You are here</small><b>${esc(c.shortName === 'Authority' ? 'Deepcore Colony' : c.name)} <i>›</i> ${ROUTE_NAMES[ui.route]}</b></div>
     <div class="badge">Fee ${pct(colonyFee(s.colony, s.rep[s.colony]))} · Rank ${r}</div>
-    <button class="btn amber" data-act="route" data-to="map">Map</button>
+    ${ui.route === 'map' ? '<button class="btn ghost" data-act="back-to-work">Close map</button>' : '<button class="btn amber" data-act="route" data-to="map">Map</button>'}
     <div class="credits"><small>Credits</small><b class="num" data-live="credits">${fmt(s.credits)} CR</b></div>
   </header>`;
 }
@@ -49,9 +48,8 @@ export function sidebar(s: GameState): string {
     </button>`;
   }).join('');
   const links: [Route, string][] = [
-    ['market', 'Market'],
-    ['board', 'Task board'],
-    ['stall', 'Stall'],
+    ['city', 'City Center'],
+    ['stall', 'Trade ring'],
     ['inventory', 'Inventory'],
     ['hangar', 'Hangar'],
   ];
@@ -62,9 +60,9 @@ export function sidebar(s: GameState): string {
   </nav>`;
 }
 
-/** Banner at the top of each screen (mood board "scene header"). */
-export function banner(kicker: string, title: string, right?: [string, string]): string {
-  return `<section class="banner"><div><small>${esc(kicker)}</small><h1>${esc(title)}</h1></div>${
+/** Banner at the top of each screen (mood board "scene header"), optionally over a pixel scene. */
+export function banner(kicker: string, title: string, right?: [string, string], scene?: string): string {
+  return `<section class="banner${scene ? ' has-scene' : ''}">${scene ? `<div class="banner-scene">${scene}</div>` : ''}<div class="banner-l"><small>${esc(kicker)}</small><h1>${esc(title)}</h1></div>${
     right ? `<div class="banner-r"><small>${esc(right[0])}</small><b class="num">${esc(right[1])}</b></div>` : ''
   }</section>`;
 }

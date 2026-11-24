@@ -79,7 +79,7 @@ p { margin: 0 0 8px; }
 .side-skill .thin { grid-column: 1 / 3; }
 .thin { display: block; height: 4px; background: var(--void); }
 .thin i { display: block; height: 100%; background: var(--cyan); }
-.main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; padding: 20px max(16px, 2vw) 60px; align-items: start; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; padding: 20px max(16px, 2vw) 60px; align-items: start; align-content: start; }
 .main > .away, .main > .dev { grid-column: 1 / -1; }
 .rcol { display: flex; flex-direction: column; gap: 16px; }
 
@@ -220,4 +220,121 @@ td.n { text-align: right; font-family: var(--num); font-size: 18px; }
   .ware .icbox { width: 44px; height: 44px; }
   .ware-btns { grid-column: 1 / -1; grid-template-columns: repeat(4, 1fr); }
   .stat.wide { grid-column: auto; }
+}
+
+/* ================= S4b: mood board screens ================= */
+.main.full { grid-template-columns: minmax(0, 1fr); }
+.kicker { display: block; font: 11px var(--pixel); letter-spacing: 0.18em; color: var(--cyan); text-transform: uppercase; }
+.amber-k { color: var(--amber); margin: 16px 0 8px; }
+.pix { font: 18px var(--pixel); letter-spacing: 0.08em; text-transform: uppercase; }
+.amber-t { color: var(--amber); }
+.cyan-t { color: var(--cyan); }
+.btn.wide { width: 100%; margin-top: 12px; }
+.tag { display: inline-block; font: 10px var(--pixel); letter-spacing: 0.12em; padding: 2px 6px; text-transform: uppercase; }
+.tag.amber { background: var(--amber); color: var(--void); }
+.tag.cyan { background: var(--cyan); color: var(--void); }
+.tag.grey { background: var(--gunmetal); color: var(--bone); }
+.scene-svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+
+/* Banner over a scene: the scene fills it, text sits on a dark scrim. */
+.banner.has-scene { position: relative; min-height: 150px; overflow: hidden; box-shadow: none; }
+.banner-scene { position: absolute; inset: 0; }
+.banner.has-scene::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(7, 9, 13, 0.85), rgba(7, 9, 13, 0.25) 55%, rgba(7, 9, 13, 0.75)); }
+.banner-l, .banner-r { position: relative; z-index: 1; }
+
+/* Framed scene (trade ring, city center, hangar). */
+.scene-box { border: 1px solid var(--gunmetal); background: var(--void); aspect-ratio: 200 / 84; max-height: 440px; width: 100%; overflow: hidden; margin-bottom: 14px; }
+
+/* Tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.tab { min-height: 44px; padding: 8px 18px; background: var(--hull); border: 0; border-top: 2px solid transparent; font: 12px var(--pixel); letter-spacing: 0.14em; text-transform: uppercase; color: var(--bone); }
+.tab.on { border-top-color: var(--amber); color: var(--amber); background: var(--steel); }
+.tab.dis { color: var(--plate); display: inline-flex; align-items: center; }
+
+/* ---------- Asteroid map ---------- */
+.mapwrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 0; background: var(--void); border: 1px solid var(--gunmetal); }
+.mapcol { padding: 16px; }
+.mapbox { position: relative; aspect-ratio: 160 / 96; border: 1px solid var(--gunmetal); overflow: hidden; }
+.mapbox .scene-svg { position: absolute; inset: 0; }
+.site { position: absolute; transform: translate(-12px, -50%); display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 6px; min-height: 44px; }
+.site i { width: 16px; height: 16px; transform: rotate(45deg); background: var(--cyan); border: 2px solid var(--void); box-shadow: 0 0 0 2px var(--cyan); flex: none; }
+.site span { font: 11px var(--pixel); letter-spacing: 0.1em; text-transform: uppercase; background: rgba(7, 9, 13, 0.85); padding: 3px 6px; border-left: 2px solid var(--cyan); white-space: nowrap; }
+.site.here i { background: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
+.site.here span { border-left-color: var(--amber); }
+.site.locked i, .site.ship i { background: var(--plate); box-shadow: 0 0 0 2px var(--plate); }
+.site.locked span, .site.ship span { border-left-color: var(--plate); color: var(--plate); }
+.site.sel i { outline: 2px solid var(--bone); outline-offset: 4px; }
+.site.ship { transform: translate(-50%, -12px); flex-direction: column; gap: 4px; }
+.site.ship span { transform: translateX(-35%); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 13px; color: var(--plate); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.d { width: 10px; height: 10px; transform: rotate(45deg); display: inline-block; }
+.d.here { background: var(--amber); }
+.d.open { background: var(--cyan); }
+.d.locked, .d.ship { background: var(--plate); }
+.sitepanel { background: var(--hull); border-left: 1px solid var(--gunmetal); padding: 22px 20px; display: flex; flex-direction: column; gap: 8px; }
+.site-h { font: 22px var(--pixel); letter-spacing: 0.08em; color: var(--bone); text-transform: uppercase; margin: 0; }
+.sitepanel .tag { align-self: flex-start; }
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.duo .stat b { font-size: 30px; }
+.cells.big { grid-template-columns: repeat(16, 1fr); }
+.can { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.can li { padding: 3px 0 3px 18px; position: relative; }
+.can li::before { content: ''; position: absolute; left: 0; top: 10px; width: 8px; height: 8px; background: var(--cyan); }
+.sitepanel .btn.wide { margin-top: auto; }
+
+/* ---------- Trade ring ---------- */
+.stallgrid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+.row-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.row-h h2 { margin-top: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px 10px; background: var(--hull); border: 1px solid var(--gunmetal); font-size: 14px; text-align: center; min-height: 128px; }
+.tile.sel { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
+.tile .tag { position: absolute; top: 6px; right: 6px; }
+.tile .icbox { width: 48px; height: 48px; }
+.selpanel { border-top-color: var(--amber); display: flex; flex-direction: column; gap: 8px; }
+.price { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 0; }
+.price b { font-size: 34px; line-height: 1; }
+.order { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; counter-reset: o; }
+.order li { counter-increment: o; display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--hull); font-size: 14px; }
+.order li::before { content: counter(o) '.'; font: 18px var(--num); color: var(--amber); width: 18px; }
+.order li .ic { width: 18px; height: 18px; }
+.order li .num { margin-left: auto; color: var(--cyan); }
+.order li.empty { opacity: 0.5; }
+
+/* ---------- City Center ---------- */
+.missiongrid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+.msteps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mstep { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: center; background: var(--hull); padding: 14px 16px; border-left: 3px solid var(--gunmetal); }
+.mstep .pix { color: var(--cyan); font-size: 20px; }
+.mstep span:first-child { display: block; font-weight: 600; margin-bottom: 6px; }
+.mstep em { font-style: normal; color: var(--plate); }
+.mstep.done { border-left-color: var(--cyan); }
+.mstep.done em { color: var(--cyan); }
+.mstep.cur { border-left-color: var(--amber); }
+.mstep.cur .thin i { background: var(--amber); }
+.mstep.cur em { color: var(--amber); }
+.stepcard { border-top-color: var(--amber); display: flex; flex-direction: column; gap: 8px; }
+.stepcard .stat { background: var(--void); }
+
+/* ---------- Hangar ---------- */
+.partslots { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.partslot { background: var(--hull); border-top: 2px solid var(--gunmetal); padding: 10px 14px; }
+.partslot.on { border-top-color: var(--amber); }
+.partslot small { display: block; font: 11px var(--pixel); letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); }
+.partslot span { font-size: 14px; color: var(--bone); }
+
+@media (max-width: 1100px) {
+  .mapwrap, .stallgrid, .missiongrid { grid-template-columns: minmax(0, 1fr); }
+  .sitepanel { border-left: 0; border-top: 1px solid var(--gunmetal); }
+}
+@media (max-width: 760px) {
+  .site span { font-size: 9px; padding: 2px 4px; }
+  .site i { width: 12px; height: 12px; }
+  .banner.has-scene { min-height: 120px; }
+  .tiles { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+@media (max-width: 760px) {
+  /* Small map: only the selected site keeps its label; the panel below names it. */
+  .site:not(.sel) span { display: none; }
 }

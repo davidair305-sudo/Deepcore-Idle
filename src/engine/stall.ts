@@ -49,10 +49,17 @@ export function saleTimeMs(s: GameState): number {
   return SALE_TIME_MS / (1 + STALL_SPEED_PER_LEVEL * (tl - 1)) / speed;
 }
 
-/** Add an item to the stall at market price, or do nothing if it's already listed. */
-export function listWare(s: GameState, item: string, price = 1, pick: PickOrder = 'lowest'): void {
-  if (s.stall.some((w) => w.item === item)) return;
+/** Display slots on the stall (mood board: six). */
+export const MAX_WARES = 6;
+
+/**
+ * Add an item to the stall at market price. Returns false if it's already
+ * listed or every display slot is full.
+ */
+export function listWare(s: GameState, item: string, price = 1, pick: PickOrder = 'lowest'): boolean {
+  if (s.stall.some((w) => w.item === item) || s.stall.length >= MAX_WARES) return false;
   s.stall.push({ item, price: clampPrice(price), pick });
+  return true;
 }
 
 export function setWarePrice(s: GameState, item: string, price: number): void {
