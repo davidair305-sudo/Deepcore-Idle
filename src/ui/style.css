@@ -205,10 +205,12 @@ td.n { text-align: right; font-family: var(--num); font-size: 18px; }
   .where { order: 5; width: 100%; }
   .badge { display: none; }
   .credits b { font-size: 22px; }
-  .body { grid-template-columns: minmax(0, 1fr); padding-bottom: 64px; }
-  .side { position: fixed; bottom: 0; left: 0; right: 0; z-index: 6; flex-direction: row; overflow-x: auto; padding: 0; border-right: 0; border-top: 1px solid var(--gunmetal); }
-  .side .label, .side .thin { display: none; }
-  .side-skill, .side-link { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 0; border-left: 0; border-top: 3px solid transparent; padding: 6px 12px; font-size: 13px; }
+  .body { grid-template-columns: minmax(0, 1fr); }
+  /* Every section fits in two rows: no hidden tabs off the edge. */
+  .body { padding-bottom: 112px; }
+  .side { position: fixed; bottom: 0; left: 0; right: 0; z-index: 6; display: grid; grid-template-columns: repeat(4, 1fr); padding: 0 0 env(safe-area-inset-bottom); border-right: 0; border-top: 1px solid var(--gunmetal); }
+  .side .label, .side .thin, .side-link.dup { display: none; }
+  .side-skill, .side-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; border-left: 0; border-top: 3px solid transparent; padding: 4px 2px; min-height: 52px; font-size: 13px; text-align: center; }
   .side-skill.on, .side-link.on { border-top-color: var(--amber); }
   .main { padding: 16px 16px 40px; }
   .banner { padding: 16px; }

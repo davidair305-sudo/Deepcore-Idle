@@ -58,7 +58,7 @@ export function sidebar(s: GameState): string {
   return `<nav class="side" aria-label="Game sections">
     <div class="label">Skills</div>${skills}
     <div class="label">Colony</div>
-    ${links.map(([r, n]) => `<button class="side-link${ui.route === r ? ' on' : ''}" data-act="route" data-to="${r}">${n}</button>`).join('')}
+    ${links.map(([r, n]) => `<button class="side-link${ui.route === r ? ' on' : ''}${r === 'stall' ? ' dup' : ''}" data-act="route" data-to="${r}">${n}</button>`).join('')}
   </nav>`;
 }
 
